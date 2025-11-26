@@ -1,4 +1,5 @@
 "use client";
+import API_URL from "@/lib/config";
 import { useState } from "react";
 
 // Uppdaterad typ med bild
@@ -30,7 +31,7 @@ export default function Home() {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch(`http://127.0.0.1:8000/search?q=${query}`);
+      const res = await fetch(`${API_URL}/search?q=${query}`);
       const data = await res.json();
       setSearchResults(data);
     } catch (err) {
@@ -49,7 +50,7 @@ export default function Home() {
   // OPTIMERA
   const optimizeBasket = async () => {
     const productIds = basket.map(p => p.id);
-    const res = await fetch("http://127.0.0.1:8000/optimize", {
+    const res = await fetch(`${API_URL}/optimize`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ product_ids: productIds }),
