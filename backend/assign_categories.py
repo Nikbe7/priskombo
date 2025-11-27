@@ -1,137 +1,194 @@
 import os
 import json
 import time
+import re
 import google.generativeai as genai
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from app.database import SessionLocal
 from app.models import Product, Category
 
-# Läs API-nyckel från miljön
+# Läs API-nyckel och modell från miljön
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+GOOGLE_AI_MODEL = os.getenv("GOOGLE_AI_MODEL", "gemini-2.0-flash")
 
-def assign_categories_smart():
+def assign_categories_optimized():
     db = SessionLocal()
     
     # 1. Förberedelser
-    categories = db.query(Category).all()
+    categories = db.query(Category.id, Category.name).all()
     if not categories:
         print("❌ Inga kategorier hittades.")
         return
     
+    # Optimering: Hämta bara namn och ID, inte hela objekten
     cat_names = [c.name for c in categories]
     cat_map = {c.name: c.id for c in categories}
     
-    # Hämta okategoriserade produkter
-    products = db.query(Product).filter(Product.category_id == None).all()
-    print(f"🕵️‍♂️ Hittade {len(products)} okategoriserade produkter.")
+    total_products = db.query(Product.id).filter(Product.category_id == None).count()
+    print(f"🕵️‍♂️ Hittade totalt {total_products} okategoriserade produkter.")
     
-    if not products:
+    if total_products == 0:
         print("✅ Allt är redan kategoriserat!")
         return
 
-    # VÄLJ STRATEGI
+    # ---------------------------------------------------------
+    # STEG 1: SQL-BASERAD NYCKELORDSSÖKNING (Algoritm: Set-based Update)
+    # ---------------------------------------------------------
+    print("\n⚡ STEG 1: Kör SQL-baserad massuppdatering...")
+    
+    keyword_hits = run_sql_keyword_categorization(db, cat_map)
+    print(f"   -> Databasen uppdaterade {keyword_hits} produkter direkt.")
+
+    # ---------------------------------------------------------
+    # STEG 2: KÖR AI PÅ RESTEN (Batchad & JSON Schema)
+    # ---------------------------------------------------------
     if GOOGLE_API_KEY:
-        print("🤖 GOOGLE_API_KEY hittad! Kör med Gemini AI (Hög precision)...")
-        run_ai_categorization(db, products, cat_names, cat_map)
+        # Räkna om efter steg 1
+        remaining_count = db.query(Product.id).filter(Product.category_id == None).count()
+        
+        if remaining_count > 0:
+            print(f"\n🤖 STEG 2: Kör AI ({GOOGLE_AI_MODEL}) på återstående {remaining_count} produkter...")
+            run_ai_categorization_bulk(db, cat_names, cat_map)
+        else:
+            print("✨ Inget kvar för AI att göra!")
     else:
-        print("⚠️ Ingen GOOGLE_API_KEY hittad. Kör med Nyckelord (Lägre precision)...")
-        print("   (Skaffa en nyckel på https://aistudio.google.com/app/apikey för bättre resultat)")
-        run_keyword_categorization(db, products, cat_map)
+        print("\n⚠️ Ingen API-nyckel. Hoppar över AI-steget.")
 
     db.close()
+    print("\n✅ Kategorisering klar.")
 
-def run_ai_categorization(db, products, cat_names, cat_map):
-    genai.configure(api_key=GOOGLE_API_KEY)
-    model = genai.GenerativeModel('gemini-2.0-flash') # Snabb och billig modell
-    
-    BATCH_SIZE = 20 # Vi tar 20 produkter åt gången
-    
-    for i in range(0, len(products), BATCH_SIZE):
-        batch = products[i:i+BATCH_SIZE]
-        print(f"🔄 Bearbetar batch {i+1} av {len(products)}...")
+def run_sql_keyword_categorization(db, cat_map):
+    """
+    Körs direkt i databasen via Regex. Extremt snabbt.
+    """
+    rules = {
+        "Manligt": ["men", "homme", "man", "skägg", "beard", "herr"],
+        "Parfym": ["parfum", "eau de", "toilette", "cologne", "doft", "edt", "edp"],
+        "Smink": ["mascara", "foundation", "puder", "lipstick", "makeup", "concealer", "brow", "liner", "rouge", "nagellack"],
+        "Hårvård": ["schampo", "shampoo", "balsam", "conditioner", "wax", "vax", "paste", "hår", "hair", "spray", "mousse"],
+        "Ansiktsvård": ["face", "ansikte", "creme", "kräm", "cleanser", "rengöring", "serum", "eye", "ögon", "day", "night", "moisturizer"],
+        "Kroppsvård": ["body", "kropp", "shower", "dusch", "tvål", "soap", "lotion", "deodorant", "deo", "scrub", "wash", "hand"],
+        "Hälsa & Apotek": ["vitamin", "kosttillskott", "plåster", "värktablett", "mage", "tugg", "kapslar", "tablett", "omega"]
+    }
+
+    total_updated = 0
+
+    for cat_name, keywords in rules.items():
+        if cat_name not in cat_map:
+            continue
+            
+        cat_id = cat_map[cat_name]
         
-        # Bygg prompten
-        product_list_str = "\n".join([f"- ID {p.id}: {p.name}" for p in batch])
+        patterns = []
+        for k in keywords:
+            safe_k = re.escape(k) 
+            if len(k) <= 3:
+                patterns.append(f"\\y{safe_k}\\y") 
+            else:
+                patterns.append(safe_k)
+        
+        regex_pattern = f"({'|'.join(patterns)})"
+        
+        sql = text("""
+            UPDATE products 
+            SET category_id = :cid 
+            WHERE category_id IS NULL 
+            AND name ~* :pattern
+        """)
+        
+        result = db.execute(sql, {"cid": cat_id, "pattern": regex_pattern})
+        count = result.rowcount
+        
+        if count > 0:
+            total_updated += count
+            db.commit()
+
+    return total_updated
+
+def run_ai_categorization_bulk(db, cat_names, cat_map):
+    genai.configure(api_key=GOOGLE_API_KEY)
+    
+    # Optimering: Använd JSON Schema för garanterad struktur
+    generation_config = {
+        "response_mime_type": "application/json",
+    }
+    
+    model = genai.GenerativeModel(
+        GOOGLE_AI_MODEL,
+        generation_config=generation_config
+    )
+    
+    # Optimering: Större batch för Flash-modeller (sparar nätverksanrop)
+    BATCH_SIZE = 100 
+    backoff_time = 30
+    
+    while True:
+        # Optimering: Hämta BARA id och namn (Lean loading)
+        batch = db.query(Product.id, Product.name)\
+            .filter(Product.category_id == None)\
+            .limit(BATCH_SIZE)\
+            .all()
+        
+        if not batch:
+            break
+            
+        print(f"   🔄 AI Batch: Bearbetar {len(batch)} produkter...")
+        
+        # Bygg minimal prompt
+        product_list_str = json.dumps([{"id": p.id, "name": p.name} for p in batch], ensure_ascii=False)
         categories_str = ", ".join(cat_names)
         
         prompt = f"""
-        Du är en expert på e-handelskategorisering för en svensk sajt.
+        Uppgift: Kategorisera produkterna till EXAKT en av dessa kategorier: {categories_str}.
         
-        Tillgängliga kategorier: {categories_str}.
+        Regler:
+        1. "Men"/"Man" i namn -> Alltid 'Manligt'.
+        2. Doft/Parfym -> 'Parfym'.
         
-        Uppgift:
-        Kategorisera följande produkter till EXAKT en av kategorierna ovan.
-        - Om det är för män (t.ex. "Men", "Man", "Beard"), välj ALLTID 'Manligt' oavsett vad produkten är.
-        - Om det är parfym/doft, välj 'Parfym'.
-        - Om osäker, välj den mest logiska.
+        Returnera en JSON-lista: [{{ "id": 123, "category": "Kategorinamn" }}]
         
-        Svara ENDAST med en JSON-lista på detta format:
-        [
-            {{"id": 123, "category": "Kategorinamn"}},
-            ...
-        ]
-
-        Produkter:
+        Data:
         {product_list_str}
         """
 
         try:
             response = model.generate_content(prompt)
-            # Städa svaret (ta bort eventuella markdown-tecken)
-            clean_json = response.text.replace("```json", "").replace("```", "").strip()
-            matches = json.loads(clean_json)
+            # Eftersom vi tvingar JSON behöver vi inte städa svaret lika aggressivt
+            matches = json.loads(response.text)
             
-            updates = 0
+            # Optimering: Bulk Update (istället för row-by-row)
+            mappings = []
             for match in matches:
                 pid = match.get("id")
                 cname = match.get("category")
                 
-                # Hitta produkten och uppdatera
-                product = next((p for p in batch if p.id == pid), None)
-                if product and cname in cat_map:
-                    product.category_id = cat_map[cname]
-                    print(f"  ✨ {product.name} -> {cname}")
-                    updates += 1
+                if cname in cat_map:
+                    mappings.append({
+                        "id": pid,
+                        "category_id": cat_map[cname]
+                    })
             
-            db.commit()
-            # Snabb paus för att vara snäll mot API:et
-            time.sleep(0.5)
+            if mappings:
+                db.bulk_update_mappings(Product, mappings)
+                db.commit()
+                print(f"      ✅ AI kategoriserade {len(mappings)} st (Bulk Update).")
+            
+            backoff_time = 30
+            # Kort paus för att inte överbelasta, men kortare än förut tack vare större batch
+            time.sleep(1) 
 
         except Exception as e:
-            print(f"❌ AI-fel på denna batch: {e}")
-            # Vi fortsätter till nästa batch ändå
-
-def run_keyword_categorization(db, products, cat_map):
-    # Fallback-regler (samma som förut men lite trimmade)
-    rules = {
-        "Manligt": ["men", "homme", "man ", "skägg", "beard", "herr"],
-        "Parfym": ["parfum", "eau de", "toilette", "cologne", "doft"],
-        "Smink": ["mascara", "foundation", "puder", "lipstick", "makeup", "concealer", "brow", "liner"],
-        "Hårvård": ["schampo", "shampoo", "balsam", "conditioner", "wax", "vax", "paste", "hår", "hair", "spray"],
-        "Ansiktsvård": ["face", "ansikte", "creme", "kräm", "cleanser", "rengöring", "serum", "eye", "ögon", "day", "night"],
-        "Kroppsvård": ["body", "kropp", "shower", "dusch", "tvål", "soap", "lotion", "deodorant", "deo", "scrub"],
-        "Hälsa & Apotek": ["vitamin", "kosttillskott", "plåster", "värktablett", "mage", "tugg", "kapslar"]
-    }
-
-    count = 0
-    for product in products:
-        name_lower = product.name.lower()
-        found = False
-        
-        for cat_name, keywords in rules.items():
-            if any(k in name_lower for k in keywords):
-                if cat_name in cat_map:
-                    product.category_id = cat_map[cat_name]
-                    count += 1
-                    print(f"  📍 {product.name} -> {cat_name}")
-                    found = True
-                    break
-        
-        if not found:
-            print(f"  ❓ Kunde inte gissa: {product.name}")
-
-    db.commit()
-    print(f"✅ Klar! Uppdaterade {count} produkter med nyckelord.")
+            err_msg = str(e)
+            print(f"      ❌ Fel: {e}")
+            if "429" in err_msg or "Quota" in err_msg:
+                print(f"      🛑 QUOTA EXCEEDED! Pausar {backoff_time}s...")
+                time.sleep(backoff_time)
+                backoff_time = min(backoff_time * 2, 300)
+            else:
+                print("      ⚠️ Hoppar över batch pga okänt fel (försöker nästa).")
+                # I verkligheten kanske vi vill logga dessa IDn till en fil
+                continue
 
 if __name__ == "__main__":
-    assign_categories_smart()
+    assign_categories_optimized()
