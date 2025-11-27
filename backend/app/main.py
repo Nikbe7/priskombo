@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from pydantic import BaseModel
 from typing import List
 
@@ -34,20 +34,41 @@ def read_root():
 
 @app.get("/search")
 def search(q: str, db: Session = Depends(get_db)):
-    if not q: return []
-    products = db.query(Product).filter(Product.name.ilike(f"%{q}%")).all()
-    results = []
-    for product in products:
-        prices = db.query(ProductPrice, Store).join(Store).filter(ProductPrice.product_id == product.id).order_by(ProductPrice.price.asc()).all()
-        price_list = [{"store": s.name, "price": p.price, "url": p.url} for p, s in prices]
-        results.append({
-            "id": product.id,
-            "name": product.name,
-            "ean": product.ean,
-            "image_url": product.image_url,  # <--- HÄR ÄR DEN NYA RADEN!
-            "prices": price_list
+    if not q or len(q) < 2: # Sök inte på 1 bokstav
+        return []
+
+    # OPTIMERAD SÖKNING:
+    # 1. Hämta Produkter, Priser och Butiker i EN fråga (JOIN)
+    # 2. Begränsa till 50 träffar för att inte döda frontend
+    query_result = db.query(Product, ProductPrice, Store)\
+        .join(ProductPrice, Product.id == ProductPrice.product_id)\
+        .join(Store, ProductPrice.store_id == Store.id)\
+        .filter(Product.name.ilike(f"%{q}%"))\
+        .limit(200)\
+        .all() # Hämtar max 200 rader (t.ex. 50 produkter * 4 butiker)
+
+    # 3. Gruppera resultatet i Python (mycket snabbare än SQL-anrop)
+    results_map = {}
+    
+    for product, price, store in query_result:
+        if product.id not in results_map:
+            results_map[product.id] = {
+                "id": product.id,
+                "name": product.name,
+                "ean": product.ean,
+                "image_url": product.image_url,
+                "prices": []
+            }
+        
+        results_map[product.id]["prices"].append({
+            "store": store.name,
+            "price": price.price,
+            "url": price.url
         })
-    return results
+    
+    # 4. Returnera som lista och sortera ev. på bästa pris
+    final_results = list(results_map.values())
+    return final_results
 
 # --- NY ENDPOINT: OPTIMERA ---
 @app.post("/optimize")

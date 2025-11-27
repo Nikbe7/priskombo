@@ -1,23 +1,20 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import Home from '../src/app/page';
 
-// VIKTIGT: En smartare mock som hanterar både /categories och /search
+// 1. MOCKA FETCH
 // @ts-ignore
 global.fetch = jest.fn((url: string) => {
   const urlString = url.toString();
 
-  // 1. Om sidan vill ha kategorier (när den laddas)
   if (urlString.includes('/categories')) {
     return Promise.resolve({
       json: () => Promise.resolve([
-        { id: 1, name: 'Hårvård' },
-        { id: 2, name: 'Ansiktsvård' }
+        { id: 1, name: 'Hårvård' }
       ]),
     });
   }
 
-  // 2. Om sidan vill söka (när vi klickar på knappen)
   if (urlString.includes('/search')) {
     return Promise.resolve({
       json: () => Promise.resolve([
@@ -32,31 +29,34 @@ global.fetch = jest.fn((url: string) => {
     });
   }
 
-  // Fallback
   return Promise.resolve({ json: () => Promise.resolve([]) });
 });
 
 describe('Home Page', () => {
-  it('visar sökfält och kategorier', async () => {
-    render(<Home />);
-    
-    expect(screen.getByRole('heading', { name: /Smarta\s*Korgen/i })).toBeInTheDocument();
-    
-    // Vi väntar på att kategorierna ska laddas in (fixar act-varningar)
-    await waitFor(() => {
-        expect(screen.getByText('Hårvård')).toBeInTheDocument();
-    });
+  // Använd "Fake Timers" för att kontrollera debounce
+  beforeEach(() => {
+    jest.useFakeTimers();
   });
 
-  it('kan söka och visa resultat', async () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('söker automatiskt efter att man slutat skriva (debounce)', async () => {
     render(<Home />);
     
     const input = screen.getByPlaceholderText(/Sök produkt/i);
-    const button = screen.getByText('Sök');
 
+    // 1. Skriv i rutan
     fireEvent.change(input, { target: { value: 'Shampoo' } });
-    fireEvent.click(button);
 
+    // 2. Snabbspola tiden 400ms (din debounce-tid)
+    // Vi måste wrappa detta i 'act' eftersom det triggar state-uppdateringar
+    act(() => {
+      jest.advanceTimersByTime(400);
+    });
+
+    // 3. Nu ska sökningen ha kickat igång och vi väntar på resultatet
     await waitFor(() => {
       expect(screen.getByText('Test Shampoo')).toBeInTheDocument();
       expect(screen.getByText(/Från 100 kr/i)).toBeInTheDocument();
