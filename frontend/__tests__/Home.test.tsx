@@ -1,8 +1,9 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import Home from '../src/app/page';
+import Home from '@/app/page';
+import { CartProvider } from '@/context/CartContext'; // <-- Viktig import!
 
-// 1. MOCKA FETCH
+// Mocka fetch globalt
 // @ts-ignore
 global.fetch = jest.fn((url: string) => {
   const urlString = url.toString();
@@ -33,7 +34,6 @@ global.fetch = jest.fn((url: string) => {
 });
 
 describe('Home Page', () => {
-  // Använd "Fake Timers" för att kontrollera debounce
   beforeEach(() => {
     jest.useFakeTimers();
   });
@@ -42,21 +42,25 @@ describe('Home Page', () => {
     jest.useRealTimers();
   });
 
-  it('söker automatiskt efter att man slutat skriva (debounce)', async () => {
-    render(<Home />);
+  it('söker automatiskt efter debounce', async () => {
+    // VIKTIGT: Wrappa komponenten i CartProvider
+    render(
+      <CartProvider>
+        <Home />
+      </CartProvider>
+    );
     
     const input = screen.getByPlaceholderText(/Sök produkt/i);
 
-    // 1. Skriv i rutan
+    // Skriv i rutan
     fireEvent.change(input, { target: { value: 'Shampoo' } });
 
-    // 2. Snabbspola tiden 400ms (din debounce-tid)
-    // Vi måste wrappa detta i 'act' eftersom det triggar state-uppdateringar
+    // Snabbspola tiden (Debounce)
     act(() => {
       jest.advanceTimersByTime(400);
     });
 
-    // 3. Nu ska sökningen ha kickat igång och vi väntar på resultatet
+    // Vänta på resultat
     await waitFor(() => {
       expect(screen.getByText('Test Shampoo')).toBeInTheDocument();
       expect(screen.getByText(/Från 100 kr/i)).toBeInTheDocument();

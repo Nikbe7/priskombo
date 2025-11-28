@@ -1,28 +1,23 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import CategoryPage from '@/app/category/[id]/page';
+import { CartProvider } from '@/context/CartContext'; // <-- Import
 
-// 1. MOCKA NAVIGATION (useParams + useRouter + useSearchParams)
+// Mocka navigation
 const mockPush = jest.fn();
-
 jest.mock('next/navigation', () => ({
   useParams: () => ({ id: '1' }),
   useRouter: () => ({ push: mockPush }),
-  useSearchParams: () => ({ 
-    get: () => '1' // Simulerar att vi är på ?page=1
-  }),
+  useSearchParams: () => ({ get: () => '1' }),
 }));
 
-// 2. MOCKA FETCH
+// Mocka fetch
 // @ts-ignore
 global.fetch = jest.fn((url: string) => {
-  const urlString = url.toString();
-  
-  if (urlString.includes('/categories/1')) {
+  if (url.toString().includes('/categories/1')) {
     return Promise.resolve({
       json: () => Promise.resolve({
         category: { id: 1, name: 'Hårvård' },
-        // VIKTIGT: Mocka pagination-data så att det finns fler sidor
         pagination: { total: 40, page: 1, limit: 20, total_pages: 2 },
         products: [
           {
@@ -35,40 +30,37 @@ global.fetch = jest.fn((url: string) => {
       }),
     });
   }
-  
   return Promise.resolve({ json: () => Promise.resolve({}) });
 });
 
 describe('Category Page', () => {
-  beforeEach(() => {
-    mockPush.mockClear();
-  });
-
-  it('hämtar och visar kategori, produkter och paginering', async () => {
-    render(<CategoryPage />);
+  it('visar produkter och paginering', async () => {
+    // Wrappa i CartProvider
+    render(
+      <CartProvider>
+        <CategoryPage />
+      </CartProvider>
+    );
 
     await waitFor(() => {
-      // Kategori
       expect(screen.getByRole('heading', { name: /Hårvård/i })).toBeInTheDocument();
-      // Pagineringstext
+      expect(screen.getByText('H&S Schampo')).toBeInTheDocument();
       expect(screen.getByText(/Sida 1 av 2/i)).toBeInTheDocument();
-      // Knapp för nästa sida ska finnas
-      expect(screen.getByText(/Nästa/i)).toBeInTheDocument();
     });
   });
 
-  it('navigerar till sida 2 när man klickar på Nästa', async () => {
-    render(<CategoryPage />);
+  it('navigerar till sida 2', async () => {
+    render(
+      <CartProvider>
+        <CategoryPage />
+      </CartProvider>
+    );
 
-    // Vänta på att knappen renderas
     await waitFor(() => {
       expect(screen.getByText(/Nästa/i)).toBeInTheDocument();
     });
 
-    const nextButton = screen.getByText(/Nästa/i);
-    fireEvent.click(nextButton);
-
-    // Kolla att vi försöker byta sida via routern
+    fireEvent.click(screen.getByText(/Nästa/i));
     expect(mockPush).toHaveBeenCalledWith('/category/1?page=2');
   });
 });

@@ -7,7 +7,7 @@ from typing import List
 from app.database import get_db
 from app.models import Product, ProductPrice, Store
 from app.services.optimizer import calculate_best_basket
-from api.v1.endpoints import categories
+from api.v1.endpoints import categories, products
 from app.services.optimizer import calculate_best_basket
 
 app = FastAPI()
@@ -22,6 +22,7 @@ app.add_middleware(
 
 # HÄR REGISTRERAR VI ROUTERN:
 app.include_router(categories.router, prefix="/categories", tags=["categories"])
+app.include_router(products.router, prefix="/products", tags=["products"])
 
 # --- DATAMODELLER (Schema) ---
 # Detta berättar för FastAPI hur datat vi skickar IN ser ut
