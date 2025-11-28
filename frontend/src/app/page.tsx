@@ -98,7 +98,7 @@ export default function Home() {
       <main className="flex-1 p-8 overflow-y-auto">
         <header className="mb-10 text-center">
           <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">
-            Smarta<span className="text-blue-600">Korgen</span>
+            Pris<span className="text-blue-600">Kombo</span>
           </h1>
           <p className="text-gray-500 mt-2">Sök, plocka, spara pengar.</p>
         </header>
