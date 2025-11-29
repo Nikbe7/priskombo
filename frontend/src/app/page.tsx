@@ -4,7 +4,7 @@ import Link from "next/link";
 import API_URL from "@/lib/config";
 import { useCart } from "@/context/CartContext"; 
 
-// Typer
+// Typer (Behåll samma som förut)
 type Product = { 
   id: number; 
   name: string; 
@@ -12,10 +12,7 @@ type Product = {
   image_url: string | null; 
   prices: { price: number; store: string; url: string }[] 
 };
-
 type Category = { id: number; name: string; };
-
-// Ny typ för Deals (matchar backend-svaret från /deals)
 type Deal = {
   id: number;
   name: string;
@@ -30,44 +27,25 @@ type Deal = {
 export default function Home() {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState(""); 
-  
   const [categories, setCategories] = useState<Category[]>([]);
   const [searchResults, setSearchResults] = useState<Product[]>([]);
-  const [homeDeals, setHomeDeals] = useState<Deal[]>([]); // <-- State för startsidans deals
+  const [homeDeals, setHomeDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(false);
-
   const { addToBasket } = useCart(); 
 
-  // Hämta kategorier OCH deals vid start
   useEffect(() => {
-    // 1. Kategorier
-    fetch(`${API_URL}/categories`)
-      .then(res => res.json())
-      .then(data => setCategories(data))
-      .catch(err => console.error(err));
-
-    // 2. Deals (Hämta topp 4 för startsidan)
-    fetch(`${API_URL}/deals?limit=4`)
-      .then(res => res.json())
-      .then(data => setHomeDeals(data))
-      .catch(err => console.error(err));
+    fetch(`${API_URL}/categories`).then(res => res.json()).then(data => setCategories(data)).catch(console.error);
+    fetch(`${API_URL}/deals?limit=4`).then(res => res.json()).then(data => setHomeDeals(data)).catch(console.error);
   }, []);
 
-  // Debounce
   useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedQuery(query);
-    }, 400);
+    const handler = setTimeout(() => setDebouncedQuery(query), 400);
     return () => clearTimeout(handler);
   }, [query]);
 
-  // Sökning
   useEffect(() => {
     const performSearch = async () => {
-      if (debouncedQuery.length < 2) {
-        setSearchResults([]);
-        return;
-      }
+      if (debouncedQuery.length < 2) { setSearchResults([]); return; }
       setLoading(true);
       try {
         const res = await fetch(`${API_URL}/search?q=${debouncedQuery}`);
@@ -80,126 +58,143 @@ export default function Home() {
   }, [debouncedQuery]);
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
-      <main className="p-8 pb-32 max-w-7xl mx-auto">
-        
-        <header className="mb-10 text-center">
-          <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">
-            Pris<span className="text-blue-600">Kombo</span>
+    <div className="min-h-screen pt-20"> {/* pt-20 kompenserar för sticky navbar */}
+      
+      {/* HERO SEKTION (Bakgrund + Sök) */}
+      <section className="relative bg-gradient-to-b from-blue-50 to-white pt-16 pb-20 px-6 text-center">
+        <div className="max-w-4xl mx-auto relative z-10">
+          <h1 className="text-5xl md:text-6xl font-extrabold text-slate-900 tracking-tight mb-6 leading-tight">
+            Spara pengar på <br/>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">varje köp</span>
           </h1>
-          <p className="text-gray-500 mt-2">Sök, plocka, spara pengar.</p>
-        </header>
-        
-        <form onSubmit={(e) => e.preventDefault()} className="flex gap-3 mb-12 max-w-2xl mx-auto relative">
-          <input 
-            className="flex-1 p-4 rounded-full border border-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 outline-none pl-6" 
-            placeholder="Sök produkt..." 
-            value={query} 
-            onChange={(e) => setQuery(e.target.value)} 
-          />
-          {loading && <div className="absolute right-6 top-4 text-gray-400 animate-pulse">⏳</div>}
-        </form>
+          <p className="text-lg text-slate-500 mb-10 max-w-2xl mx-auto">
+            Sök, kombinera och optimera. Vi hittar den billigaste lösningen för hela din varukorg genom att jämföra alla butiker samtidigt.
+          </p>
 
-        {/* START-INNEHÅLL (Visas bara om ingen sökning görs) */}
+          {/* SÖKFÄLT (Lyxigare design) */}
+          <div className="relative max-w-2xl mx-auto group">
+            <div className="absolute -inset-1 bg-gradient-to-r from-blue-400 to-indigo-400 rounded-full opacity-20 group-hover:opacity-40 transition duration-500 blur"></div>
+            <form onSubmit={(e) => e.preventDefault()} className="relative bg-white rounded-full shadow-xl flex items-center p-2">
+              <span className="pl-4 text-2xl">🔍</span>
+              <input 
+                className="flex-1 p-4 bg-transparent outline-none text-lg text-slate-700 placeholder:text-slate-400"
+                placeholder="Sök produkt (t.ex. Hugo Boss)..." 
+                value={query} 
+                onChange={(e) => setQuery(e.target.value)} 
+              />
+              {loading && <div className="pr-6 animate-spin">⏳</div>}
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <main className="p-8 max-w-7xl mx-auto">
+        
+        {/* START-VY: KATEGORIER & DEALS */}
         {searchResults.length === 0 && !loading && query.length === 0 && (
-          <div className="max-w-6xl mx-auto space-y-16">
+          <div className="space-y-20 animate-fade-in-up">
             
-            {/* SEKTION 1: KATEGORIER */}
+            {/* KATEGORIER */}
             <section>
-              <h2 className="text-xl font-bold mb-6 text-gray-800">Utforska kategorier</h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                
-                {/* MANUELLT KORT: KAMPANJER / DEALS */}
-                <Link href="/deals">
-                  <div className="bg-red-50 p-4 rounded-xl shadow-sm border border-red-100 hover:shadow-md hover:border-red-200 transition cursor-pointer text-center group h-full flex flex-col justify-center">
-                    <div className="text-3xl mb-2 group-hover:scale-110 transition duration-300">🔥</div>
-                    <div className="font-bold text-red-600 group-hover:text-red-700 text-sm">Kampanjer</div>
+              <h2 className="text-2xl font-bold mb-8 text-slate-800 flex items-center gap-2">
+                <span className="w-1 h-8 bg-blue-600 rounded-full"></span>
+                Utforska kategorier
+              </h2>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <Link href="/deals" className="group">
+                  <div className="bg-gradient-to-br from-red-500 to-rose-600 p-6 rounded-2xl shadow-lg shadow-red-200 hover:shadow-xl hover:scale-105 transition text-center h-full flex flex-col justify-center text-white">
+                    <div className="text-3xl mb-2">🔥</div>
+                    <div className="font-bold">Kampanjer</div>
                   </div>
                 </Link>
 
                 {categories.map(cat => (
-                  <Link key={cat.id} href={`/category/${cat.id}`}>
-                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md hover:border-blue-200 transition cursor-pointer text-center group h-full flex flex-col justify-center">
-                      <div className="text-3xl mb-2 group-hover:scale-110 transition duration-300">📦</div>
-                      <div className="font-bold text-gray-700 group-hover:text-blue-600 text-sm">{cat.name}</div>
+                  <Link key={cat.id} href={`/category/${cat.id}`} className="group">
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:border-blue-200 hover:shadow-md transition text-center h-full flex flex-col justify-center">
+                      <div className="text-4xl mb-3 grayscale group-hover:grayscale-0 group-hover:scale-110 transition duration-300">📦</div>
+                      <div className="font-bold text-slate-700 group-hover:text-blue-600">{cat.name}</div>
                     </div>
                   </Link>
                 ))}
               </div>
             </section>
 
-            {/* SEKTION 2: HETA DEALS (NY!) */}
+            {/* DEALS */}
             {homeDeals.length > 0 && (
               <section>
-                <div className="flex justify-between items-end mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900">Heta Deals 🔥</h2>
-                  <Link href="/deals" className="text-blue-600 font-medium hover:underline">Se alla deals →</Link>
+                <div className="flex justify-between items-end mb-8">
+                  <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                    <span className="w-1 h-8 bg-red-500 rounded-full"></span>
+                    Heta Deals just nu
+                  </h2>
+                  <Link href="/deals" className="text-blue-600 font-bold hover:underline">Se alla deals →</Link>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   {homeDeals.map((deal) => (
-                    <div key={deal.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition group relative">
-                      {/* Rabatt-lapp */}
-                      <div className="absolute top-3 right-3 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full z-10">
-                        -{deal.discount_percent}%
+                    <div key={deal.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-xl transition-all duration-300 group">
+                      <div className="relative h-48 bg-slate-50 p-6 flex items-center justify-center">
+                        <div className="absolute top-3 right-3 bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md z-10">
+                          -{deal.discount_percent}%
+                        </div>
+                        {deal.image_url ? (
+                          <img src={deal.image_url} alt="" className="max-h-full object-contain mix-blend-multiply group-hover:scale-110 transition duration-500" />
+                        ) : <span className="text-4xl">🎁</span>}
                       </div>
 
-                      <Link href={`/product/${deal.id}`} className="block">
-                        <div className="h-40 bg-gray-50 flex items-center justify-center p-4">
-                          {deal.image_url ? (
-                            <img src={deal.image_url} alt="" className="max-h-full object-contain mix-blend-multiply group-hover:scale-105 transition" />
-                          ) : (
-                            <span className="text-2xl">🎁</span>
-                          )}
-                        </div>
-                      </Link>
-
-                      <div className="p-4">
-                        <Link href={`/product/${deal.id}`} className="hover:text-blue-600">
-                          <h3 className="font-bold text-gray-800 text-sm mb-1 line-clamp-2 h-10">{deal.name}</h3>
+                      <div className="p-5">
+                        <div className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">{deal.store}</div>
+                        <Link href={`/product/${deal.id}`} className="block mb-3 hover:text-blue-600 transition">
+                          <h3 className="font-bold text-slate-800 text-lg leading-snug line-clamp-2 h-12">{deal.name}</h3>
                         </Link>
                         
-                        <div className="flex items-end gap-2 mb-3">
-                          <span className="text-lg font-extrabold text-red-600">{deal.price} kr</span>
-                          <span className="text-xs text-gray-400 line-through mb-1">{deal.regular_price} kr</span>
+                        <div className="flex justify-between items-end">
+                          <div>
+                            <div className="text-gray-400 text-sm line-through">{deal.regular_price} kr</div>
+                            <div className="text-2xl font-extrabold text-red-600">{deal.price} kr</div>
+                          </div>
+                          <button 
+                            onClick={() => addToBasket({
+                                id: deal.id, name: deal.name, ean: "", image_url: deal.image_url, 
+                                prices: [{ price: deal.price, store: deal.store, url: deal.url }]
+                            } as any)}
+                            className="bg-blue-50 text-blue-600 w-10 h-10 flex items-center justify-center rounded-full hover:bg-blue-600 hover:text-white transition shadow-sm"
+                          >
+                            +
+                          </button>
                         </div>
-
-                        <button 
-                          onClick={() => addToBasket({
-                              id: deal.id, name: deal.name, ean: "", image_url: deal.image_url, 
-                              prices: [{ price: deal.price, store: deal.store, url: deal.url }]
-                          } as any)}
-                          className="w-full bg-blue-50 text-blue-600 text-sm font-bold py-2 rounded-lg hover:bg-blue-100 transition"
-                        >
-                          + Lägg i
-                        </button>
                       </div>
                     </div>
                   ))}
                 </div>
               </section>
             )}
-
           </div>
         )}
 
-        {/* SÖKRESULTAT (Visas vid sökning) */}
+        {/* SÖKRESULTAT LISTA */}
         {searchResults.length > 0 && (
-          <div className="grid gap-6 max-w-3xl mx-auto">
+          <div className="space-y-4 max-w-3xl mx-auto animate-fade-in-up">
+            <h2 className="text-xl font-bold text-slate-700 mb-4">Sökresultat</h2>
             {searchResults.map((p) => (
-              <div key={p.id} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex gap-5 items-center hover:shadow-md transition">
-                <Link href={`/product/${p.id}`} className="cursor-pointer block flex-shrink-0">
-                  <div className="w-24 h-24 bg-gray-100 rounded-xl overflow-hidden flex items-center justify-center hover:opacity-90 transition">
-                    {p.image_url ? <img src={p.image_url} alt={p.name} className="w-full h-full object-contain p-2" /> : <span className="text-gray-400 text-xs">Ingen bild</span>}
-                  </div>
+              <div key={p.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex gap-5 items-center hover:shadow-md transition group">
+                <Link href={`/product/${p.id}`} className="w-20 h-20 bg-slate-50 rounded-lg flex items-center justify-center p-2 flex-shrink-0">
+                  {p.image_url ? <img src={p.image_url} alt="" className="w-full h-full object-contain mix-blend-multiply group-hover:scale-110 transition" /> : "📷"}
                 </Link>
                 <div className="flex-1 min-w-0">
-                  <Link href={`/product/${p.id}`} className="hover:underline decoration-blue-500">
-                    <h3 className="font-bold text-lg text-gray-800 truncate">{p.name}</h3>
+                  <Link href={`/product/${p.id}`} className="block">
+                    <h3 className="font-bold text-slate-800 text-lg hover:text-blue-600 truncate transition">{p.name}</h3>
                   </Link>
-                  <div className="mt-2 text-blue-600 font-medium">Från {Math.min(...p.prices.map(x => x.price))} kr</div>
+                  <p className="text-blue-600 font-bold mt-1">
+                    Från {Math.min(...p.prices.map(x => x.price))} kr
+                  </p>
                 </div>
-                <button onClick={() => addToBasket(p)} className="bg-blue-50 text-blue-600 border border-blue-200 px-5 py-2 rounded-full font-bold hover:bg-blue-100 transition whitespace-nowrap flex-shrink-0">+ Lägg i</button>
+                <button 
+                  onClick={() => addToBasket(p)}
+                  className="bg-blue-600 text-white px-6 py-2 rounded-full font-bold hover:bg-blue-700 transition shadow-md hover:shadow-lg"
+                >
+                  + Lägg i
+                </button>
               </div>
             ))}
           </div>

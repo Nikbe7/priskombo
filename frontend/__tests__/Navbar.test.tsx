@@ -1,13 +1,11 @@
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import Navbar from '@/components/Navbar';
 import { CartProvider, useCart } from '@/context/CartContext';
-import { useEffect } from 'react';
 
-// En hjälp-komponent för att lägga till saker i korgen inifrån testet
+// Helper-komponent för att lägga till saker i korgen
 const TestComponent = () => {
   const { addToBasket } = useCart();
-  
   return (
     <button onClick={() => addToBasket({ 
       id: 1, 
@@ -29,13 +27,14 @@ describe('Navbar', () => {
       </CartProvider>
     );
 
-    // Kolla att "PrisKombo" finns (loggan)
+    // Kolla att loggan finns
     expect(screen.getByText(/Pris/i)).toBeInTheDocument();
     expect(screen.getByText(/Kombo/i)).toBeInTheDocument();
 
     // Kolla länkar
     expect(screen.getByText('Sök')).toBeInTheDocument();
-    expect(screen.getByText('Kategorier')).toBeInTheDocument();
+    // ÄNDRAT: Vi kollar efter "Deals" istället för "Kategorier"
+    expect(screen.getByText(/Deals/i)).toBeInTheDocument();
   });
 
   it('visar rätt antal varor i korgen', () => {
@@ -46,13 +45,14 @@ describe('Navbar', () => {
       </CartProvider>
     );
 
-    // Från början ska det stå "0 varor"
-    expect(screen.getByText('0')).toBeInTheDocument();
+    // ÄNDRAT: Den nya designen döljer badgen om korgen är tom.
+    // Vi kollar att siffran 0 INTE finns i dokumentet.
+    expect(screen.queryByText('0')).not.toBeInTheDocument();
 
     // Klicka på knappen för att lägga till en vara
     fireEvent.click(screen.getByText('Add Item'));
 
-    // Nu ska det stå "1"
+    // Nu ska badgen dyka upp med siffran 1
     expect(screen.getByText('1')).toBeInTheDocument();
   });
 });
