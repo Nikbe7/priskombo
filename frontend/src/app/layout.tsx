@@ -5,7 +5,7 @@ import { CartProvider } from "@/context/CartContext";
 import CartSidebar from "@/components/CartSidebar";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import MobileCart from "@/components/MobileCart"; // <-- NY IMPORT
+import MobileCart from "@/components/MobileCart";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -23,7 +23,8 @@ export default function RootLayout({
     <html lang="sv">
       <body className={`${inter.className} bg-gray-50 text-gray-900`}>
         <CartProvider>
-          <div className="flex min-h-screen flex-col">
+          {/* Lade till pt-20 här för att innehållet inte ska hamna bakom den fasta navbaren */}
+          <div className="flex min-h-screen flex-col pt-20">
             
             <Navbar />
 
@@ -36,14 +37,12 @@ export default function RootLayout({
                 <Footer />
               </div>
 
-              {/* Desktop Sidebar (syns bara på lg skärmar) */}
-              <div className="hidden lg:block relative w-96"> 
-                <CartSidebar />
-              </div>
+              {/* Sidebar hanterar nu sin egen synlighet (och är hidden på mobile via CSS klasser internt) */}
+              <CartSidebar />
 
             </div>
             
-            {/* Mobil Varukorg (Ligger utanför flex-flödet, fixed position) */}
+            {/* Mobil Varukorg */}
             <MobileCart /> 
 
           </div>

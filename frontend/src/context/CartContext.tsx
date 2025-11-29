@@ -1,7 +1,6 @@
 "use client";
 import React, { createContext, useContext, useState, ReactNode } from "react";
 
-// Definiera typerna (samma som du haft förut)
 type Product = { 
   id: number; 
   name: string; 
@@ -14,17 +13,21 @@ interface CartContextType {
   basket: Product[];
   addToBasket: (product: Product) => void;
   removeFromBasket: (productId: number) => void;
+  isCartOpen: boolean; // <-- Nytt state
+  toggleCart: () => void; // <-- Ny funktion
+  setIsCartOpen: (isOpen: boolean) => void; // <-- Ny funktion
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [basket, setBasket] = useState<Product[]>([]);
+  const [isCartOpen, setIsCartOpen] = useState(false); // Stängd som standard
 
   const addToBasket = (product: Product) => {
-    // Förhindra dubbletter (eller ändra logik om du vill ha antal)
     if (!basket.find((p) => p.id === product.id)) {
       setBasket((prev) => [...prev, product]);
+      setIsCartOpen(true); // Öppna listan automatiskt när man lägger till!
     }
   };
 
@@ -32,14 +35,22 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setBasket((prev) => prev.filter((p) => p.id !== productId));
   };
 
+  const toggleCart = () => setIsCartOpen((prev) => !prev);
+
   return (
-    <CartContext.Provider value={{ basket, addToBasket, removeFromBasket }}>
+    <CartContext.Provider value={{ 
+      basket, 
+      addToBasket, 
+      removeFromBasket,
+      isCartOpen,
+      toggleCart,
+      setIsCartOpen
+    }}>
       {children}
     </CartContext.Provider>
   );
 }
 
-// En hook för att enkelt använda korgen i andra komponenter
 export function useCart() {
   const context = useContext(CartContext);
   if (!context) {

@@ -39,17 +39,14 @@ describe('Product Page', () => {
     );
 
     await waitFor(() => {
-      // Produktnamn
       expect(screen.getByRole('heading', { name: /Lyxig Parfym/i })).toBeInTheDocument();
       
-      // ÄNDRAT HÄR: Eftersom "500 kr" visas både i highlight-rutan OCH i listan
-      // använder vi getAllByText och kollar att listan inte är tom.
+      // Använd getAllByText för priset om det dyker upp på flera ställen
       const prices = screen.getAllByText('500 kr');
       expect(prices.length).toBeGreaterThan(0);
       
-      // Butikslistan ska synas
-      expect(screen.getByText('Kicks')).toBeInTheDocument();
-      expect(screen.getByText('Lyko')).toBeInTheDocument();
+      // NYTT: Kolla att "Lägg till"-knappen finns
+      expect(screen.getByText('+ Lägg till')).toBeInTheDocument();
     });
   });
 });

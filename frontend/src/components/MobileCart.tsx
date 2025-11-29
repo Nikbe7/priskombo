@@ -4,13 +4,13 @@ import { useCart } from "@/context/CartContext";
 import API_URL from "@/lib/config";
 
 export default function MobileCart() {
-  const { basket, removeFromBasket } = useCart();
-  const [isOpen, setIsOpen] = useState(false);
+  // Använd global state istället för lokal isOpen
+  const { basket, removeFromBasket, isCartOpen, setIsCartOpen } = useCart();
   const [optimizedResults, setOptimizedResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Om listan är tom och stängd, visa ingenting
-  if (basket.length === 0 && !isOpen) return null;
+  if (basket.length === 0 && !isCartOpen) return null;
 
   const optimizeBasket = async () => {
     if (basket.length === 0) return;
@@ -28,11 +28,11 @@ export default function MobileCart() {
 
   return (
     <>
-      {/* 1. FLYTANDE KNAPP (Syns bara på mobil) */}
-      {!isOpen && basket.length > 0 && (
+      {/* 1. FLYTANDE KNAPP (Syns bara om stängd och varor finns) */}
+      {!isCartOpen && basket.length > 0 && (
         <div className="fixed bottom-4 left-4 right-4 z-50 lg:hidden animate-fade-in-up">
           <button 
-            onClick={() => setIsOpen(true)}
+            onClick={() => setIsCartOpen(true)} // Använd global setter
             className="w-full bg-slate-900 text-white p-4 rounded-xl shadow-2xl flex justify-between items-center font-bold"
           >
             <span className="flex items-center gap-2"><span className="text-xl">📝</span> Visa listan</span>
@@ -43,24 +43,20 @@ export default function MobileCart() {
         </div>
       )}
 
-      {/* 2. OVERLAY / DRAWER (När den är öppen) */}
-      {isOpen && (
+      {/* 2. OVERLAY (När isCartOpen är true) */}
+      {isCartOpen && (
         <div className="fixed inset-0 z-50 lg:hidden flex flex-col justify-end">
-          {/* Mörk bakgrund (klicka för att stänga) */}
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsOpen(false)}></div>
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsCartOpen(false)}></div>
           
-          {/* Själva listan */}
           <div className="relative bg-white w-full rounded-t-3xl shadow-2xl max-h-[85vh] flex flex-col animate-fade-in-up">
             
-            {/* Header med stäng-knapp */}
             <div className="p-6 border-b border-gray-100 flex justify-between items-center">
               <h2 className="text-xl font-bold text-gray-900">Din Inköpslista</h2>
-              <button onClick={() => setIsOpen(false)} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200">
+              <button onClick={() => setIsCartOpen(false)} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200">
                 ✕
               </button>
             </div>
 
-            {/* Produktlista */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {basket.length === 0 ? <p className="text-center text-gray-400 py-10">Listan är tom</p> : null}
               
@@ -77,7 +73,6 @@ export default function MobileCart() {
               ))}
             </div>
 
-            {/* Footer / Action */}
             <div className="p-6 border-t border-gray-100 bg-white pb-10">
               <button 
                 onClick={optimizeBasket} 

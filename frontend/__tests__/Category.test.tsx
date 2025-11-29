@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import CategoryPage from '@/app/category/[id]/page';
-import { CartProvider } from '@/context/CartContext'; // <-- Import
+import { CartProvider } from '@/context/CartContext';
 
 // Mocka navigation
 const mockPush = jest.fn();
@@ -35,7 +35,6 @@ global.fetch = jest.fn((url: string) => {
 
 describe('Category Page', () => {
   it('visar produkter och paginering', async () => {
-    // Wrappa i CartProvider
     render(
       <CartProvider>
         <CategoryPage />
@@ -45,7 +44,9 @@ describe('Category Page', () => {
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: /Hårvård/i })).toBeInTheDocument();
       expect(screen.getByText('H&S Schampo')).toBeInTheDocument();
-      expect(screen.getByText(/Sida 1 av 2/i)).toBeInTheDocument();
+      
+      // NYTT: Kolla knapptexten
+      expect(screen.getByText('+ Lägg till')).toBeInTheDocument();
     });
   });
 

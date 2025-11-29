@@ -42,11 +42,11 @@ describe('MobileCart', () => {
         <MobileCart />
       </CartProvider>
     );
-    // ÄNDRAT: Letar efter "Visa listan"
+    // Knappen ska inte finnas om korgen är tom
     expect(screen.queryByText(/Visa listan/i)).not.toBeInTheDocument();
   });
 
-  it('visar knapp och kan öppna korgen', () => {
+  it('öppnas automatiskt vid köp, kan stängas och öppnas igen', () => {
     render(
       <CartProvider>
         <TestAddToCart />
@@ -54,36 +54,28 @@ describe('MobileCart', () => {
       </CartProvider>
     );
 
+    // 1. Lägg till vara -> Korgen öppnas AUTOMATISKT
     fireEvent.click(screen.getByText('Lägg till vara'));
     
-    // ÄNDRAT: Letar efter "Visa listan"
-    const openBtn = screen.getByText(/Visa listan/i);
-    expect(openBtn).toBeInTheDocument();
-    
-    fireEvent.click(openBtn);
-
-    // ÄNDRAT: Letar efter "Din Inköpslista"
+    // Verifiera att korgen är öppen direkt (vi behöver inte klicka på "Visa listan")
     expect(screen.getByText('Din Inköpslista')).toBeInTheDocument();
     expect(screen.getByText('Testprodukt')).toBeInTheDocument();
-  });
+    
+    // Knappen "Visa listan" ska INTE synas nu (eftersom korgen är öppen)
+    expect(screen.queryByText(/Visa listan/i)).not.toBeInTheDocument();
 
-  it('kan stänga korgen', () => {
-    render(
-      <CartProvider>
-        <TestAddToCart />
-        <MobileCart />
-      </CartProvider>
-    );
-
-    fireEvent.click(screen.getByText('Lägg till vara'));
-    fireEvent.click(screen.getByText(/Visa listan/i));
-
+    // 2. Stäng korgen
+    // Hitta alla kryss (header + produkt) och klicka på det första (Headern)
     const closeBtns = screen.getAllByText('✕');
-    const closeBtn = closeBtns[0];
-    fireEvent.click(closeBtn);
+    fireEvent.click(closeBtns[0]);
 
-    // ÄNDRAT: Letar efter "Din Inköpslista"
+    // 3. Nu ska korgen vara stängd och knappen synlig igen
     expect(screen.queryByText('Din Inköpslista')).not.toBeInTheDocument();
-    expect(screen.getByText(/Visa listan/i)).toBeInTheDocument();
+    const openBtn = screen.getByText(/Visa listan/i);
+    expect(openBtn).toBeInTheDocument();
+
+    // 4. Öppna igen manuellt
+    fireEvent.click(openBtn);
+    expect(screen.getByText('Din Inköpslista')).toBeInTheDocument();
   });
 });

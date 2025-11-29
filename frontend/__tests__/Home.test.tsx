@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import Home from '@/app/page';
-import { CartProvider } from '@/context/CartContext'; // <-- Viktig import!
+import { CartProvider } from '@/context/CartContext';
 
 // Mocka fetch globalt
 // @ts-ignore
@@ -29,6 +29,10 @@ global.fetch = jest.fn((url: string) => {
       ]),
     });
   }
+  // För deals
+  if (urlString.includes('/deals')) {
+    return Promise.resolve({ json: () => Promise.resolve([]) });
+  }
 
   return Promise.resolve({ json: () => Promise.resolve([]) });
 });
@@ -42,8 +46,7 @@ describe('Home Page', () => {
     jest.useRealTimers();
   });
 
-  it('söker automatiskt efter debounce', async () => {
-    // VIKTIGT: Wrappa komponenten i CartProvider
+  it('söker automatiskt efter debounce och visar rätt knapp', async () => {
     render(
       <CartProvider>
         <Home />
@@ -52,18 +55,21 @@ describe('Home Page', () => {
     
     const input = screen.getByPlaceholderText(/Sök produkt/i);
 
-    // Skriv i rutan
+    // 1. Skriv i rutan
     fireEvent.change(input, { target: { value: 'Shampoo' } });
 
-    // Snabbspola tiden (Debounce)
+    // 2. Snabbspola tiden (Debounce)
     act(() => {
       jest.advanceTimersByTime(400);
     });
 
-    // Vänta på resultat
+    // 3. Vänta på resultat
     await waitFor(() => {
       expect(screen.getByText('Test Shampoo')).toBeInTheDocument();
       expect(screen.getByText(/Från 100 kr/i)).toBeInTheDocument();
+      
+      // NYTT: Kolla att knappen heter "+ Lägg till"
+      expect(screen.getByText('+ Lägg till')).toBeInTheDocument();
     });
   });
 });
