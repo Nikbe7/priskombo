@@ -82,7 +82,7 @@ export default function CategoryPage() {
                 onClick={() => addToBasket(p)}
                 className="bg-blue-50 text-blue-600 border border-blue-200 px-4 py-2 rounded-full font-bold hover:bg-blue-100 transition whitespace-nowrap text-sm"
               >
-                + Lägg i
+                + Lägg till
               </button>
             </div>
           ))}

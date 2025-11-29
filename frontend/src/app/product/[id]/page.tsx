@@ -93,7 +93,7 @@ export default function ProductPage() {
                       onClick={() => addToBasket(product as any)} // Cast: Backend-strukturen matchar, men TS kan klaga på 'shipping' fältet
                       className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-full font-bold shadow-lg transition transform hover:scale-105"
                     >
-                      + Lägg i kombon
+                      + Lägg till
                     </button>
                 </div>
               </div>

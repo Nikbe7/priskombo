@@ -35,6 +35,9 @@ describe('Navbar', () => {
     expect(screen.getByText('Sök')).toBeInTheDocument();
     // ÄNDRAT: Vi kollar efter "Deals" istället för "Kategorier"
     expect(screen.getByText(/Deals/i)).toBeInTheDocument();
+    
+    // NYTT: Kolla att "Min lista" texten finns
+    expect(screen.getByText(/Min lista/i)).toBeInTheDocument();
   });
 
   it('visar rätt antal varor i korgen', () => {

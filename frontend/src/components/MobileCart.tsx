@@ -9,7 +9,7 @@ export default function MobileCart() {
   const [optimizedResults, setOptimizedResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Om korgen är tom och stängd, visa ingenting
+  // Om listan är tom och stängd, visa ingenting
   if (basket.length === 0 && !isOpen) return null;
 
   const optimizeBasket = async () => {
@@ -35,9 +35,9 @@ export default function MobileCart() {
             onClick={() => setIsOpen(true)}
             className="w-full bg-slate-900 text-white p-4 rounded-xl shadow-2xl flex justify-between items-center font-bold"
           >
-            <span>🛒 Visa korgen</span>
+            <span className="flex items-center gap-2"><span className="text-xl">📝</span> Visa listan</span>
             <span className="bg-white text-slate-900 px-3 py-1 rounded-full text-xs">
-              {basket.length} varor
+              {basket.length} st
             </span>
           </button>
         </div>
@@ -49,12 +49,12 @@ export default function MobileCart() {
           {/* Mörk bakgrund (klicka för att stänga) */}
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsOpen(false)}></div>
           
-          {/* Själva korgen */}
+          {/* Själva listan */}
           <div className="relative bg-white w-full rounded-t-3xl shadow-2xl max-h-[85vh] flex flex-col animate-fade-in-up">
             
             {/* Header med stäng-knapp */}
             <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-gray-900">Din Varukorg</h2>
+              <h2 className="text-xl font-bold text-gray-900">Din Inköpslista</h2>
               <button onClick={() => setIsOpen(false)} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200">
                 ✕
               </button>
@@ -62,7 +62,7 @@ export default function MobileCart() {
 
             {/* Produktlista */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {basket.length === 0 ? <p className="text-center text-gray-400 py-10">Korgen är tom</p> : null}
+              {basket.length === 0 ? <p className="text-center text-gray-400 py-10">Listan är tom</p> : null}
               
               {basket.map((p) => (
                 <div key={p.id} className="flex gap-3 items-center bg-gray-50 p-3 rounded-xl border border-gray-100">
@@ -78,13 +78,13 @@ export default function MobileCart() {
             </div>
 
             {/* Footer / Action */}
-            <div className="p-6 border-t border-gray-100 bg-white pb-10"> {/* Extra padding bottom för iPhone home bar */}
+            <div className="p-6 border-t border-gray-100 bg-white pb-10">
               <button 
                 onClick={optimizeBasket} 
                 disabled={basket.length === 0 || loading} 
                 className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg"
               >
-                {loading ? "Räknar..." : "Hitta billigaste 🚀"}
+                {loading ? "Räknar..." : "Hitta bästa kombon 🚀"}
               </button>
 
               {optimizedResults.length > 0 && (

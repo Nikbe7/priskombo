@@ -3,7 +3,6 @@ import '@testing-library/jest-dom';
 import CartSidebar from '@/components/CartSidebar';
 import { CartProvider, useCart } from '@/context/CartContext';
 
-// Helper-komponent för att lägga till saker i korgen (eftersom Sidebar bara visar dem)
 const TestAddToCart = () => {
   const { addToBasket } = useCart();
   return (
@@ -19,7 +18,6 @@ const TestAddToCart = () => {
   );
 };
 
-// Mocka fetch för optimering
 // @ts-ignore
 global.fetch = jest.fn((url: string) => {
   if (url.includes('/optimize')) {
@@ -44,9 +42,11 @@ describe('CartSidebar', () => {
         <CartSidebar />
       </CartProvider>
     );
-    expect(screen.getByText(/Korgen är tom/i)).toBeInTheDocument();
-    // Knappen ska vara inaktiverad
-    expect(screen.getByText(/Hitta billigaste/i)).toBeDisabled();
+    // ÄNDRAT: Letar efter "Listan är tom"
+    expect(screen.getByText(/Listan är tom/i)).toBeInTheDocument();
+    
+    // ÄNDRAT: Letar efter "Hitta bästa kombon"
+    expect(screen.getByText(/Hitta bästa kombon/i)).toBeDisabled();
   });
 
   it('kan optimera korgen när varor finns', async () => {
@@ -57,23 +57,17 @@ describe('CartSidebar', () => {
       </CartProvider>
     );
 
-    // 1. Lägg till en vara
     fireEvent.click(screen.getByText('Lägg till vara'));
-
-    // 2. Kolla att den syns i korgen
     expect(screen.getByText('Testprodukt')).toBeInTheDocument();
     
-    // 3. Klicka på optimera (knappen ska nu vara aktiv)
-    const optimizeBtn = screen.getByText(/Hitta billigaste/i);
+    // ÄNDRAT: Letar efter den nya knapptexten
+    const optimizeBtn = screen.getByText(/Hitta bästa kombon/i);
     expect(optimizeBtn).not.toBeDisabled();
     fireEvent.click(optimizeBtn);
 
-    // 4. Vänta på resultatet
     await waitFor(() => {
-      // ÄNDRAT HÄR: Använd getAllByText eftersom priset visas på flera ställen (total + lista)
       const prices = screen.getAllByText('200 kr');
       expect(prices.length).toBeGreaterThan(0);
-      
       expect(screen.getByText('Smart Split')).toBeInTheDocument();
     });
   });

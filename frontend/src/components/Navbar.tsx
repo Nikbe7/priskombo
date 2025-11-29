@@ -33,15 +33,18 @@ export default function Navbar() {
           </Link>
         </div>
 
-        {/* VARUKORGS-IKON */}
+        {/* LIST-IKON */}
         <div className="flex items-center gap-4">
-          <div className="relative group cursor-pointer">
-            <span className="text-2xl">🛒</span>
-            {basket.length > 0 && (
-              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-sm animate-bounce">
-                {basket.length}
-              </span>
-            )}
+          <div className="relative group cursor-pointer flex items-center gap-2">
+            <span className="text-sm font-bold text-gray-600 hidden sm:block">Min lista</span>
+            <div className="relative">
+              <span className="text-2xl">📝</span> {/* Bytt till lista-ikon */}
+              {basket.length > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-sm animate-bounce">
+                  {basket.length}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 

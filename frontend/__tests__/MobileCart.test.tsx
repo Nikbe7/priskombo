@@ -3,7 +3,6 @@ import '@testing-library/jest-dom';
 import MobileCart from '@/components/MobileCart';
 import { CartProvider, useCart } from '@/context/CartContext';
 
-// Helper för att lägga till varor i testet
 const TestAddToCart = () => {
   const { addToBasket } = useCart();
   return (
@@ -19,7 +18,6 @@ const TestAddToCart = () => {
   );
 };
 
-// Mocka fetch för optimering (samma som i CartSidebar)
 // @ts-ignore
 global.fetch = jest.fn((url: string) => {
   if (url.includes('/optimize')) {
@@ -44,8 +42,8 @@ describe('MobileCart', () => {
         <MobileCart />
       </CartProvider>
     );
-    // Knappen ska inte finnas om korgen är tom
-    expect(screen.queryByText(/Visa korgen/i)).not.toBeInTheDocument();
+    // ÄNDRAT: Letar efter "Visa listan"
+    expect(screen.queryByText(/Visa listan/i)).not.toBeInTheDocument();
   });
 
   it('visar knapp och kan öppna korgen', () => {
@@ -56,16 +54,16 @@ describe('MobileCart', () => {
       </CartProvider>
     );
 
-    // 1. Lägg till vara -> Knappen dyker upp
     fireEvent.click(screen.getByText('Lägg till vara'));
-    const openBtn = screen.getByText(/Visa korgen/i);
+    
+    // ÄNDRAT: Letar efter "Visa listan"
+    const openBtn = screen.getByText(/Visa listan/i);
     expect(openBtn).toBeInTheDocument();
     
-    // 2. Klicka för att öppna overlayen
     fireEvent.click(openBtn);
 
-    // 3. Nu ska rubriken "Din Varukorg" synas (den finns inne i overlayen)
-    expect(screen.getByText('Din Varukorg')).toBeInTheDocument();
+    // ÄNDRAT: Letar efter "Din Inköpslista"
+    expect(screen.getByText('Din Inköpslista')).toBeInTheDocument();
     expect(screen.getByText('Testprodukt')).toBeInTheDocument();
   });
 
@@ -77,20 +75,15 @@ describe('MobileCart', () => {
       </CartProvider>
     );
 
-    // Lägg till och öppna
     fireEvent.click(screen.getByText('Lägg till vara'));
-    fireEvent.click(screen.getByText(/Visa korgen/i));
+    fireEvent.click(screen.getByText(/Visa listan/i));
 
-    // Hitta stäng-knappen (krysset) och klicka.
-    // Eftersom vi har en vara i korgen finns det två '✕' (en för stäng, en för ta bort vara).
-    // Stäng-knappen ligger först i DOM:en (i headern).
     const closeBtns = screen.getAllByText('✕');
     const closeBtn = closeBtns[0];
     fireEvent.click(closeBtn);
 
-    // Nu ska overlayen vara borta (rubriken borta)
-    expect(screen.queryByText('Din Varukorg')).not.toBeInTheDocument();
-    // Och knappen ska vara tillbaka
-    expect(screen.getByText(/Visa korgen/i)).toBeInTheDocument();
+    // ÄNDRAT: Letar efter "Din Inköpslista"
+    expect(screen.queryByText('Din Inköpslista')).not.toBeInTheDocument();
+    expect(screen.getByText(/Visa listan/i)).toBeInTheDocument();
   });
 });

@@ -27,7 +27,7 @@ export default function CartSidebar() {
       {/* Header */}
       <div className="p-6 border-b border-slate-100 bg-slate-50/50">
         <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-          🛒 Din Varukorg <span className="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full">{basket.length}</span>
+          📝 Din Inköpslista <span className="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full">{basket.length}</span>
         </h2>
       </div>
       
@@ -35,8 +35,8 @@ export default function CartSidebar() {
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {basket.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-4">
-            <span className="text-4xl opacity-50">🛍️</span>
-            <p>Korgen är tom</p>
+            <span className="text-4xl opacity-50">📋</span>
+            <p>Listan är tom</p>
           </div>
         ) : (
           basket.map((p) => (
@@ -60,7 +60,7 @@ export default function CartSidebar() {
           disabled={basket.length === 0 || loading} 
           className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-blue-200 hover:shadow-xl hover:scale-[1.02] disabled:opacity-50 disabled:scale-100 transition-all active:scale-95"
         >
-          {loading ? "Räknar ut bästa pris..." : "Hitta billigaste 🚀"}
+          {loading ? "Räknar ut bästa pris..." : "Hitta bästa kombon 🚀"}
         </button>
 
         {optimizedResults.length > 0 && (
