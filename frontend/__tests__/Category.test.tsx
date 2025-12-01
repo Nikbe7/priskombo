@@ -8,7 +8,10 @@ const mockPush = jest.fn();
 jest.mock('next/navigation', () => ({
   useParams: () => ({ id: '1' }),
   useRouter: () => ({ push: mockPush }),
-  useSearchParams: () => ({ get: () => '1' }),
+  // ÄNDRAT HÄR: Svara bara '1' om koden frågar efter "page". Annars null.
+  useSearchParams: () => ({ 
+    get: (key: string) => key === 'page' ? '1' : null 
+  }),
 }));
 
 // Mocka fetch
@@ -45,7 +48,7 @@ describe('Category Page', () => {
       expect(screen.getByRole('heading', { name: /Hårvård/i })).toBeInTheDocument();
       expect(screen.getByText('H&S Schampo')).toBeInTheDocument();
       
-      // NYTT: Kolla knapptexten
+      // Kolla knapptexten
       expect(screen.getByText('+ Lägg till')).toBeInTheDocument();
     });
   });
@@ -62,6 +65,8 @@ describe('Category Page', () => {
     });
 
     fireEvent.click(screen.getByText(/Nästa/i));
+    
+    // Nu ska URL:en bli ren och fin utan sort/search
     expect(mockPush).toHaveBeenCalledWith('/category/1?page=2');
   });
 });

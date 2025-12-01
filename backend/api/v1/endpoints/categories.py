@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func
-from typing import List
+from sqlalchemy import func, desc, asc
+from typing import Optional
 
 from app.database import get_db
 from app.models import Category, Product, ProductPrice, Store
@@ -12,36 +12,68 @@ router = APIRouter()
 def get_categories(db: Session = Depends(get_db)):
     return db.query(Category).all()
 
-# UPPDATERAD: Nu med paginering
 @router.get("/{category_id}")
 def get_category_products(
     category_id: int, 
-    page: int = Query(1, ge=1),      # Default sida 1, får inte vara < 1
-    limit: int = Query(20, ge=1, le=100), # Default 20 produkter, max 100
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    # ÄNDRAT: 'regex' -> 'pattern'
+    sort: str = Query("popularity", pattern="^(popularity|price_asc|price_desc|discount_desc|rating_desc|name_asc|newest|default)$"),
+    search: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
-    # 1. Hitta kategorin
+    # 1. Hitta kategori
     category = db.query(Category).filter(Category.id == category_id).first()
     if not category:
         raise HTTPException(status_code=404, detail="Kategorin hittades inte")
 
-    # 2. Räkna totalt antal produkter i kategorin (för att veta antal sidor)
-    total_products = db.query(func.count(Product.id)).filter(Product.category_id == category_id).scalar()
+    # 2. Grundfråga
+    query = db.query(Product).filter(Product.category_id == category_id)
 
-    # 3. Räkna ut offset (var vi ska börja hämta)
-    skip = (page - 1) * limit
+    # 3. Sökfilter
+    if search:
+        query = query.filter(Product.name.ilike(f"%{search}%"))
 
-    # 4. Hämta produkter för just denna sida
-    products = db.query(Product)\
-        .filter(Product.category_id == category_id)\
-        .limit(limit)\
-        .offset(skip)\
-        .all()
+    # 4. SORTERING
+    if sort == "name_asc":
+        query = query.order_by(Product.name.asc())
+        
+    elif sort == "newest":
+        query = query.order_by(Product.created_at.desc())
+        
+    elif sort == "popularity" or sort == "default":
+        # Sortera på popularitet (och sen namn som fallback)
+        query = query.order_by(Product.popularity_score.desc(), Product.name.asc())
+        
+    elif sort == "rating_desc":
+        query = query.order_by(Product.rating.desc())
+        
+    elif sort == "price_asc" or sort == "price_desc":
+        # Sortera på billigaste priset produkten har
+        query = query.join(ProductPrice).group_by(Product.id)
+        min_price = func.min(ProductPrice.price)
+        
+        if sort == "price_asc":
+            query = query.order_by(min_price.asc())
+        else:
+            query = query.order_by(min_price.desc())
+            
+    elif sort == "discount_desc":
+        # Sortera på största procentuella rabatt
+        query = query.join(ProductPrice).group_by(Product.id)
+        
+        max_discount = func.max(
+            (ProductPrice.regular_price - ProductPrice.price) / ProductPrice.regular_price
+        )
+        query = query.filter(ProductPrice.regular_price > 0).order_by(max_discount.desc())
+
+    # 5. Paginering
+    total_products = query.count()
+    products = query.limit(limit).offset((page - 1) * limit).all()
     
-    # 5. Bygg resultat med priser
+    # 6. Bygg svar
     product_results = []
     for product in products:
-        # Hämta priser (samma som förut)
         prices = db.query(ProductPrice, Store)\
             .join(Store)\
             .filter(ProductPrice.product_id == product.id)\
@@ -53,7 +85,8 @@ def get_category_products(
             price_list.append({
                 "store": store.name,
                 "price": price.price,
-                "url": price.url
+                "url": price.url,
+                "regular_price": price.regular_price
             })
             
         product_results.append({
@@ -61,6 +94,8 @@ def get_category_products(
             "name": product.name,
             "ean": product.ean,
             "image_url": product.image_url,
+            "popularity": product.popularity_score,
+            "rating": product.rating,
             "prices": price_list
         })
 
@@ -70,7 +105,7 @@ def get_category_products(
             "total": total_products,
             "page": page,
             "limit": limit,
-            "total_pages": (total_products + limit - 1) // limit
+            "total_pages": (total_products + limit - 1) // limit if limit > 0 else 1
         },
         "products": product_results
     }

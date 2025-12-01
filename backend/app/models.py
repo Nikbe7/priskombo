@@ -17,6 +17,11 @@ class Product(Base):
     image_url = Column(Text, nullable=True)
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
     
+    # NYA FÄLT FÖR SORTERING
+    popularity_score = Column(Integer, default=0) # Ökar när folk klickar
+    rating = Column(Float, default=0.0)           # För omdömen (0-5)
+    created_at = Column(DateTime, default=datetime.utcnow) # För "Nyast"
+
     category = relationship("Category", back_populates="products")
     prices = relationship("ProductPrice", back_populates="product")
 
@@ -34,7 +39,7 @@ class ProductPrice(Base):
     product_id = Column(Integer, ForeignKey("products.id"))
     store_id = Column(Integer, ForeignKey("stores.id"))
     price = Column(Float)
-    regular_price = Column(Float, nullable=True) # <-- NY KOLUMN HÄR!
+    regular_price = Column(Float, nullable=True)
     url = Column(Text)
     updated_at = Column(DateTime, default=datetime.utcnow)
 

@@ -43,6 +43,9 @@ describe('Deals Page', () => {
       // Kolla att rabatten syns (både pris och procent)
       expect(screen.getByText('80 kr')).toBeInTheDocument();
       expect(screen.getByText('-20%')).toBeInTheDocument();
+
+      // NYTT: Kolla att knappen har rätt text (konsekvent med resten av sajten)
+      expect(screen.getByText('+ Lägg till')).toBeInTheDocument();
     });
   });
 });

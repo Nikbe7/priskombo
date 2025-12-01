@@ -37,7 +37,8 @@ export default function DealsPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {deals.map((p) => (
-              <div key={p.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition group">
+              // Lade till 'relative' här så att absolute positioning (etiketten) stannar i rutan
+              <div key={p.id} className="relative bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition group">
                 
                 {/* Rabatt-etikett */}
                 <div className="absolute top-4 right-4 bg-red-500 text-white font-bold px-3 py-1 rounded-full text-sm z-10 shadow-md">
@@ -72,7 +73,7 @@ export default function DealsPage() {
                     } as any)}
                     className="w-full bg-blue-50 text-blue-600 font-bold py-3 rounded-xl hover:bg-blue-100 transition"
                   >
-                    + Lägg i korg
+                    + Lägg till
                   </button>
                 </div>
               </div>
