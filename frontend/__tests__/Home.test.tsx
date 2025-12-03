@@ -3,7 +3,14 @@ import '@testing-library/jest-dom';
 import Home from '@/app/page';
 import { CartProvider } from '@/context/CartContext';
 
-// Mocka fetch globalt
+// 1. MOCKA NAVIGATION (useRouter)
+// Detta krävs eftersom Home-komponenten nu använder router.push()
+const mockPush = jest.fn();
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ push: mockPush }),
+}));
+
+// 2. MOCKA FETCH (Samma som förut)
 // @ts-ignore
 global.fetch = jest.fn((url: string) => {
   const urlString = url.toString();
@@ -40,6 +47,7 @@ global.fetch = jest.fn((url: string) => {
 describe('Home Page', () => {
   beforeEach(() => {
     jest.useFakeTimers();
+    mockPush.mockClear();
   });
 
   afterEach(() => {
@@ -68,7 +76,6 @@ describe('Home Page', () => {
       expect(screen.getByText('Test Shampoo')).toBeInTheDocument();
       expect(screen.getByText(/Från 100 kr/i)).toBeInTheDocument();
       
-      // NYTT: Kolla att knappen heter "+ Lägg till"
       expect(screen.getByText('+ Lägg till')).toBeInTheDocument();
     });
   });

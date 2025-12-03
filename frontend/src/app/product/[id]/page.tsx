@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import API_URL from "@/lib/config";
-import { useCart } from "@/context/CartContext"; // <-- Importera Global Cart
+import { useCart } from "@/context/CartContext";
 
 type ProductDetails = {
   id: number;
@@ -21,7 +21,7 @@ type ProductDetails = {
 
 export default function ProductPage() {
   const params = useParams();
-  const { addToBasket } = useCart(); // <-- Hook
+  const { addToBasket } = useCart();
   const [product, setProduct] = useState<ProductDetails | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -38,13 +38,14 @@ export default function ProductPage() {
     }
   }, [params.id]);
 
-  if (loading) return <div className="p-20 text-center text-gray-500">Laddar produkt...</div>;
-  if (!product) return <div className="p-20 text-center">Produkten kunde inte hittas.</div>;
+  if (loading) return <div className="p-20 text-center text-gray-500 pt-32">Laddar produkt...</div>;
+  if (!product) return <div className="p-20 text-center pt-32">Produkten kunde inte hittas.</div>;
 
   const bestPrice = product.prices[0];
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 font-sans pb-32">
+    // Lade till pt-24 här
+    <div className="min-h-screen bg-gray-50 p-6 font-sans pb-32 pt-24">
       <div className="max-w-5xl mx-auto">
         
         <div className="text-sm text-gray-500 mb-6">
@@ -90,7 +91,7 @@ export default function ProductPage() {
 
                     {/* KNAPP 2: LÄGG I PRISKOMBO (Global Korg) */}
                     <button 
-                      onClick={() => addToBasket(product as any)} // Cast: Backend-strukturen matchar, men TS kan klaga på 'shipping' fältet
+                      onClick={() => addToBasket(product as any)}
                       className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-full font-bold shadow-lg transition transform hover:scale-105"
                     >
                       + Lägg till

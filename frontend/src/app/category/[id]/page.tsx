@@ -11,7 +11,6 @@ export default function CategoryPage() {
   const searchParams = useSearchParams();
   const { addToBasket } = useCart();
   
-  // Default sortering: popularity
   const currentPage = Number(searchParams.get("page")) || 1;
   const currentSort = searchParams.get("sort") || "popularity";
   const currentSearch = searchParams.get("search") || "";
@@ -46,7 +45,6 @@ export default function CategoryPage() {
   const updateParams = (page: number, sort: string, search: string) => {
     const query = new URLSearchParams();
     query.set("page", page.toString());
-    // Visa sort i URL även om det är popularity för tydlighet
     if (sort !== "popularity") query.set("sort", sort); 
     if (search) query.set("search", search);
     
@@ -61,11 +59,12 @@ export default function CategoryPage() {
     updateParams(newPage, currentSort, currentSearch);
   };
 
-  if (loading && !data) return <div className="p-20 text-center text-gray-500 font-medium">Laddar produkter...</div>;
-  if (!data || !data.category) return <div className="p-20 text-center">Kunde inte hitta kategorin.</div>;
+  if (loading && !data) return <div className="p-20 text-center text-gray-500 font-medium pt-32">Laddar produkter...</div>;
+  if (!data || !data.category) return <div className="p-20 text-center pt-32">Kunde inte hitta kategorin.</div>;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8 font-sans pb-32">
+    // Lade till pt-24 här
+    <div className="min-h-screen bg-gray-50 p-8 font-sans pb-32 pt-24">
       <div className="max-w-5xl mx-auto">
         <div className="mb-8">
           <Link href="/" className="text-blue-600 hover:underline mb-4 inline-block font-medium">
@@ -111,7 +110,6 @@ export default function CategoryPage() {
 
         {data.products.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-xl border border-dashed border-gray-300">
-            {/* Specialhantering om inga deals hittas */}
             {currentSort === 'discount_desc' ? (
               <div className="space-y-2">
                 <p className="text-2xl mb-2">🤷‍♂️</p>
@@ -146,7 +144,6 @@ export default function CategoryPage() {
                    </Link>
                    <div className="flex gap-2 text-sm mt-1 items-center">
                       <span className="text-gray-400 font-mono text-xs">EAN: {p.ean}</span>
-                      {/* Visa betyg om det finns */}
                       {p.rating > 0 && (
                         <span className="text-yellow-500 text-xs font-bold flex items-center gap-1 bg-yellow-50 px-2 py-0.5 rounded">
                           ⭐ {p.rating}
@@ -157,7 +154,6 @@ export default function CategoryPage() {
                       <p className="text-blue-600 font-bold">
                           Från {p.prices.length > 0 ? Math.min(...p.prices.map((x:any) => x.price)) : "?"} kr
                       </p>
-                      {/* Visa ordinarie pris om vi sorterar på deals för att bekräfta att det funkar */}
                       {currentSort === 'discount_desc' && p.prices[0]?.regular_price > 0 && (
                          <span className="text-xs text-gray-400 line-through">{p.prices[0].regular_price} kr</span>
                       )}

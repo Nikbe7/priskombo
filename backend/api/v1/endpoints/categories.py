@@ -17,51 +17,45 @@ def get_category_products(
     category_id: int, 
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
-    # ÄNDRAT: 'regex' -> 'pattern'
     sort: str = Query("popularity", pattern="^(popularity|price_asc|price_desc|discount_desc|rating_desc|name_asc|newest|default)$"),
     search: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
-    # 1. Hitta kategori
+    # 1. Hitta kategorin
     category = db.query(Category).filter(Category.id == category_id).first()
     if not category:
         raise HTTPException(status_code=404, detail="Kategorin hittades inte")
 
-    # 2. Grundfråga
-    query = db.query(Product).filter(Product.category_id == category_id)
+    # --- NY LOGIK: Inkludera underkategorier ---
+    # Om detta är en huvudkategori, hämta produkter från alla dess barn
+    category_ids = [category.id]
+    for child in category.children:
+        category_ids.append(child.id)
+    
+    # Sök på ALLA relevanta IDn
+    query = db.query(Product).filter(Product.category_id.in_(category_ids))
+    # -------------------------------------------
 
-    # 3. Sökfilter
+    # 3. Sökfilter (Samma som förut)
     if search:
         query = query.filter(Product.name.ilike(f"%{search}%"))
 
-    # 4. SORTERING
+    # 4. Sortering (Samma som förut)
     if sort == "name_asc":
         query = query.order_by(Product.name.asc())
-        
     elif sort == "newest":
         query = query.order_by(Product.created_at.desc())
-        
     elif sort == "popularity" or sort == "default":
-        # Sortera på popularitet (och sen namn som fallback)
         query = query.order_by(Product.popularity_score.desc(), Product.name.asc())
-        
     elif sort == "rating_desc":
         query = query.order_by(Product.rating.desc())
-        
     elif sort == "price_asc" or sort == "price_desc":
-        # Sortera på billigaste priset produkten har
         query = query.join(ProductPrice).group_by(Product.id)
         min_price = func.min(ProductPrice.price)
-        
-        if sort == "price_asc":
-            query = query.order_by(min_price.asc())
-        else:
-            query = query.order_by(min_price.desc())
-            
+        if sort == "price_asc": query = query.order_by(min_price.asc())
+        else: query = query.order_by(min_price.desc())
     elif sort == "discount_desc":
-        # Sortera på största procentuella rabatt
         query = query.join(ProductPrice).group_by(Product.id)
-        
         max_discount = func.max(
             (ProductPrice.regular_price - ProductPrice.price) / ProductPrice.regular_price
         )

@@ -23,8 +23,7 @@ export default function RootLayout({
     <html lang="sv">
       <body className={`${inter.className} bg-gray-50 text-gray-900`}>
         <CartProvider>
-          {/* Lade till pt-20 här för att innehållet inte ska hamna bakom den fasta navbaren */}
-          <div className="flex min-h-screen flex-col pt-20">
+          <div className="flex min-h-screen flex-col">
             
             <Navbar />
 
@@ -37,7 +36,7 @@ export default function RootLayout({
                 <Footer />
               </div>
 
-              {/* Sidebar hanterar nu sin egen synlighet (och är hidden på mobile via CSS klasser internt) */}
+              {/* Sidebar hanterar nu sin egen synlighet */}
               <CartSidebar />
 
             </div>

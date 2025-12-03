@@ -63,13 +63,70 @@ def run_sql_keyword_categorization(db, cat_map):
     Körs direkt i databasen via Regex. Extremt snabbt.
     """
     rules = {
-        "Manligt": ["men", "homme", "man", "skägg", "beard", "herr"],
-        "Parfym": ["parfum", "eau de", "toilette", "cologne", "doft", "edt", "edp"],
-        "Smink": ["mascara", "foundation", "puder", "lipstick", "makeup", "concealer", "brow", "liner", "rouge", "nagellack"],
-        "Hårvård": ["schampo", "shampoo", "balsam", "conditioner", "wax", "vax", "paste", "hår", "hair", "spray", "mousse"],
-        "Ansiktsvård": ["face", "ansikte", "creme", "kräm", "cleanser", "rengöring", "serum", "eye", "ögon", "day", "night", "moisturizer"],
-        "Kroppsvård": ["body", "kropp", "shower", "dusch", "tvål", "soap", "lotion", "deodorant", "deo", "scrub", "wash", "hand"],
-        "Hälsa & Apotek": ["vitamin", "kosttillskott", "plåster", "värktablett", "mage", "tugg", "kapslar", "tablett", "omega"]
+        # --- SKÖNHET & HÄLSA ---
+        "Manligt": ["men", "homme", "man", "skägg", "beard", "herr", "shaving", "rakhyvel", "rakskum", "aftershave"],
+        "Parfym": ["parfum", "eau de", "toilette", "cologne", "doft", "edt", "edp", "perfume"],
+        "Smink": ["mascara", "foundation", "puder", "lipstick", "makeup", "concealer", "brow", "liner", "rouge", "nagellack", "eyeshadow", "primer", "bronzer"],
+        "Hårvård": ["schampo", "shampoo", "balsam", "conditioner", "wax", "vax", "paste", "hår", "hair", "spray", "mousse", "inpackning", "torrschampo"],
+        "Ansiktsvård": ["face", "ansikte", "creme", "kräm", "cleanser", "rengöring", "serum", "eye", "ögon", "day", "night", "moisturizer", "toner", "mask"],
+        "Kroppsvård": ["body", "kropp", "shower", "dusch", "tvål", "soap", "lotion", "deodorant", "deo", "scrub", "wash", "hand", "fotkräm"],
+        "Apotek & Hälsa": ["vitamin", "kosttillskott", "plåster", "värktablett", "mage", "tugg", "kapslar", "tablett", "omega", "ipren", "alvedon", "resorb", "nasal", "allergi"],
+        "Tandvård": ["tandkräm", "tandborste", "munskölj", "flux", "pepsodent", "oral-b", "tandtråd", "toothpaste"],
+        "Solskydd": ["spf", "solkräm", "sun", "after sun", "solskydd", "tanning"],
+
+        # --- KLÄDER & ACCESSOARER ---
+        "Damkläder": ["dam", "woman", "women", "klänning", "kjol", "blus", "top", "bh", "trosor", "tights", "leggings", "bikini"],
+        "Herrkläder": ["herr", "man", "men", "skjorta", "kostym", "kavaj", "slips", "kalsonger", "boxer", "jeans herr"],
+        "Skor": ["sko", "sneaker", "känga", "stövel", "sandal", "pumps", "loafers", "boots", "tofflor", "klack"],
+        "Väskor": ["väska", "bag", "ryggsäck", "handväska", "plånbok", "resväska", "totebag"],
+        "Smycken": ["halsband", "ring", "örhänge", "armband", "guld", "silver", "diamant", "jewelry"],
+        "Klockor": ["klocka", "watch", "ur", "armbandsur", "smartwatch"],
+        "Underkläder": ["strumpor", "sockor", "underkläder", "kalsong", "trosa", "långkalsong"],
+        "Glasögon": ["solglasögon", "bågar", "läsglasögon", "linser", "kontaktlinser", "ray-ban"],
+
+        # --- HEM & HUSHÅLL ---
+        "Städ & Tvätt": ["diskmedel", "tvättmedel", "sköljmedel", "yes", "via", "ariel", "rengöringsspray", "wettex", "mopp", "sopsäck", "finish"],
+        "Kök & Matlagning": ["stekpanna", "kastrull", "kniv", "skål", "tallrik", "glas", "bestick", "mugg", "form", "ugnsform"],
+        "Belysning": ["lampa", "glödlampa", "led", "ljusslinga", "taklampa", "spotlight"],
+        "Inredning": ["kudde", "pläd", "ljuslykta", "vas", "matta", "poster", "ram", "doftljus"],
+        "Badrum": ["handduk", "badlakan", "badrumsmatta", "tvålpump", "tandborstmugg"],
+        "Sängkläder": ["påslakan", "örngott", "lakan", "sängöverkast", "täcke", "kudde säng"],
+
+        # --- TEKNIK ---
+        "Mobiler & Tillbehör": ["iphone", "samsung", "laddare", "skal", "fodral", "usb-c", "lightning", "screen protector", "skärmskydd"],
+        "Ljud & Bild": ["hörlurar", "högtalare", "jbl", "sony", "bose", "tv", "hdmi", "soundbar", "airpods"],
+        "Datorer & Surfplattor": ["laptop", "macbook", "ipad", "tablet", "dator", "mus", "tangentbord"],
+        "Gaming": ["ps5", "xbox", "nintendo", "spel", "gaming", "handkontroll", "headset"],
+        
+        # --- BARN & FAMILJ ---
+        "Blöjor & Vård": ["blöjor", "libero", "pampers", "våtservetter", "babyolja", "zinksalva", "napp", "nappflaska"],
+        "Leksaker": ["lego", "docka", "pussel", "spel", "barbie", "fisher price", "gosedjur", "bilbana"],
+        "Barnkläder & Skor": ["barnsko", "barnkläder", "body", "pyjamas barn", "overall", "regnkläder barn"],
+
+        # --- SPORT ---
+        "Kosttillskott": ["protein", "whey", "bcaa", "creatine", "gainer", "pwo", "bars", "vitamins"],
+        "Träningskläder": ["sport-bh", "träningsbyxa", "nike", "adidas", "under armour", "gymshark", "löparskor"],
+        "Utrustning": ["hantel", "gummiband", "yogamatta", "vattenflaska", "padelracket", "fotboll"],
+
+        # --- HUSDJUR ---
+        "Hund": ["hund", "dog", "valp", "koppel", "hundfoder", "royal canin", "pedigree", "hundgodis", "hundsäng"],
+        "Katt": ["katt", "cat", "kattmat", "klösträd", "kattsand", "whiskas", "kattlåda"],
+        
+        # --- BYGG ---
+        "Verktyg": ["hammare", "skruvdragare", "borr", "såg", "tång", "tumstock", "skiftnyckel"],
+        "Måleri": ["färg", "pensel", "roller", "målarfärg", "lack", "tejp"],
+        
+        # --- FORDON ---
+        "Bilvård": ["bilvax", "avfettning", "biltvätt", "schampo bil", "fälgrengöring", "spolarvätska", "doftgran"],
+        
+        # --- MAT ---
+        "Godis & Snacks": ["choklad", "chips", "godis", "nötter", "marabou", "kex", "ostbågar"],
+        "Dryck": ["coca-cola", "pepsi", "fanta", "ramlösa", "loka", "energidryck", "nocco", "celsius"],
+        "Kaffe & Te": ["kaffe", "te", "espresso", "kapslar", "zoegas", "löfbergs", "lipton"],
+
+        # --- BEGAGNAT ---
+        "Begagnat Mode": ["second hand", "pre-owned", "vintage", "använd", "begagnad"],
+        "Begagnad Elektronik": ["refurbished", "begagnad mobil", "begagnad dator"],
     }
 
     total_updated = 0
@@ -79,7 +136,6 @@ def run_sql_keyword_categorization(db, cat_map):
             continue
             
         cat_id = cat_map[cat_name]
-        
         patterns = []
         for k in keywords:
             safe_k = re.escape(k) 
@@ -143,7 +199,7 @@ def run_ai_categorization_bulk(db, cat_names, cat_map):
         Uppgift: Kategorisera produkterna till EXAKT en av dessa kategorier: {categories_str}.
         
         Regler:
-        1. "Men"/"Man" i namn -> Alltid 'Manligt'.
+        1. "Men"/"Man" i namn -> 'Manligt' (men om det är kläder, välj 'Herrkläder').
         2. Doft/Parfym -> 'Parfym'.
         
         Returnera en JSON-lista: [{{ "id": 123, "category": "Kategorinamn" }}]

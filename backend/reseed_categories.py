@@ -1,66 +1,70 @@
 from app.database import SessionLocal
 from app.models import Category
 
-def seed_categories():
+def reseed_structure():
     db = SessionLocal()
-    print("🌳 Bygger om det kompletta kategoriträdet...")
+    print("🌳 Bygger om och aktiverar kategoriträdet...")
 
-    # 1. Definiera den kompletta strukturen
-    # Vi sätter de nya till active: False (Kommer snart) tills du har data för dem.
+    # Vi sätter active: True på alla kategorier vi vill fylla med data
     structure = {
         "Skönhet & Hälsa": {
             "active": True,
             "subs": ["Hårvård", "Ansiktsvård", "Kroppsvård", "Smink", "Parfym", "Apotek & Hälsa", "Manligt", "Tandvård", "Solskydd"]
         },
         "Kläder & Accessoarer": {
-            "active": False,
+            "active": True, # <-- Aktiverad
             "subs": ["Damkläder", "Herrkläder", "Skor", "Väskor", "Smycken", "Klockor", "Underkläder", "Glasögon"]
         },
         "Hem & Hushåll": {
-            "active": False,
+            "active": True, # <-- Aktiverad
             "subs": ["Städ & Tvätt", "Kök & Matlagning", "Inredning", "Belysning", "Badrum", "Sängkläder", "Organisering"]
         },
         "Teknik & Datorer": {
-            "active": False,
+            "active": True, # <-- Aktiverad
             "subs": ["Datorer & Surfplattor", "Mobiler & Tillbehör", "Ljud & Bild", "Gaming", "Smart Hem", "Foto & Video", "Nätverk"]
         },
         "Barn & Familj": {
-            "active": False,
+            "active": True, # <-- Aktiverad
             "subs": ["Blöjor & Vård", "Leksaker", "Barnvagnar & Bilbarnstolar", "Barnkläder & Skor", "Graviditet", "Barnrum"]
         },
         "Sport & Fritid": {
-            "active": False,
+            "active": True, # <-- Aktiverad
             "subs": ["Träningskläder", "Kosttillskott", "Utrustning", "Friluftsliv", "Cykling", "Vintersport", "Bollsport"]
         },
         "Bygg & Trädgård": {
-            "active": False,
+            "active": True, # <-- Aktiverad
             "subs": ["Verktyg", "El & VVS", "Måleri", "Trädgårdsskötsel", "Byggmaterial", "Arbetskläder", "Säkerhet"]
         },
         "Husdjur": {
-            "active": False,
+            "active": True, # <-- Aktiverad
             "subs": ["Hund", "Katt", "Smådjur", "Akvarium", "Häst", "Fågel"]
         },
         "Fordon & Tillbehör": {
-            "active": False,
+            "active": True, # <-- Aktiverad
             "subs": ["Bilvård", "Reservdelar", "Däck & Fälg", "MC-utrustning", "Biltillbehör", "Olja & Vätskor"]
         },
         "Mat & Dryck": {
-            "active": False,
+            "active": True, # <-- Aktiverad
             "subs": ["Skafferi", "Dryck", "Godis & Snacks", "Kaffe & Te", "Kryddor"]
         },
         "Kontor & Företag": {
-            "active": False,
+            "active": False, # Låter denna vara inaktiv tills vidare
             "subs": ["Kontorsmaterial", "Skrivare & Bläck", "Emballage", "Kontorsmöbler", "Pennor & Block"]
         },
         "Begagnade produkter": {
-            "active": False,
+            "active": True, # <-- Aktiverad
             "subs": ["Begagnat Mode", "Begagnad Elektronik", "Möbler & Inredning", "Samlarsaker", "Media & Böcker"]
         }
     }
 
-    # 2. Loopa igenom och skapa/uppdatera
+    # Städa upp eventuella felaktiga rot-kategorier (om "Hälsa & Apotek" råkat bli en rot)
+    wrong_root = db.query(Category).filter(Category.name == "Hälsa & Apotek").first()
+    if wrong_root:
+        wrong_root.name = "Apotek & Hälsa" # Rätta namnet
+        db.commit()
+
     for root_name, data in structure.items():
-        # A. Hantera Huvudkategori
+        # A. Skapa/Hämta Huvudkategori
         root_cat = db.query(Category).filter(Category.name == root_name).first()
         
         if not root_cat:
@@ -70,7 +74,7 @@ def seed_categories():
             db.refresh(root_cat)
             print(f"   -> Skapade ROT: {root_name}")
         else:
-            # Uppdatera status och rensa eventuell gammal förälder
+            # Uppdatera status!
             root_cat.coming_soon = not data["active"]
             root_cat.parent_id = None 
             db.commit()
@@ -85,15 +89,15 @@ def seed_categories():
                 db.add(sub_cat)
                 print(f"      -> Skapade SUB: {sub_name}")
             else:
-                # Flytta den om den låg fel (eller var en rot-kategori förut)
+                # Flytta till rätt förälder om den ligger fel
                 if sub_cat.parent_id != root_cat.id:
                     sub_cat.parent_id = root_cat.id
                     db.add(sub_cat)
                     print(f"      -> Flyttade SUB: {sub_name} till {root_name}")
                 
     db.commit()
-    print("✅ Kategoriträdet är komplett och uppdaterat!")
+    print("✅ Kategoriträdet är uppdaterat och aktiverat!")
     db.close()
 
 if __name__ == "__main__":
-    seed_categories()
+    reseed_structure()

@@ -1,4 +1,3 @@
-import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import MagicMock
 from app.main import app
@@ -15,61 +14,72 @@ def override_get_db():
     mock_db = MagicMock()
     
     # --- Test Data ---
-    cat_obj = MockItem(id=1, name="Hårvård")
+    cat_obj = MockItem(id=1, name="Hårvård", children=[])
     prod_obj = MockItem(id=101, name="H&S Schampo", ean="123", category_id=1, image_url=None, popularity_score=10, rating=4.5)
     price_obj = MockItem(price=45.0, url="#", product_id=101, regular_price=50.0)
     store_obj = MockItem(name="Apotea", base_shipping=49)
 
-    # --- Smart Helper ---
-    def create_mock_query(items, count_val=100):
-        m = MagicMock()
-        # Gör så att kedjade anrop (filter, join, etc) returnerar samma mock
-        m.filter.return_value = m
-        m.join.return_value = m
-        m.group_by.return_value = m
-        m.order_by.return_value = m
-        m.limit.return_value = m
-        m.offset.return_value = m
-        
-        # Resultat-metoder
-        m.all.return_value = items
-        m.first.return_value = items[0] if items else None
-        m.count.return_value = count_val
-        m.scalar.return_value = count_val
-        return m
+    # --- Helper ---
+    def is_model(arg, model_class):
+        return arg is model_class or getattr(arg, "__name__", "") == model_class.__name__
 
-    # --- Side Effect ---
+    # --- Robust Side Effect ---
     def query_side_effect(*args):
-        if not args: return MagicMock()
-        
-        def is_model(arg, cls):
-            return arg is cls or getattr(arg, "__name__", "") == cls.__name__
+        if not args:
+            return MagicMock()
+            
+        first_arg = args[0]
+        first_arg_str = str(first_arg)
 
-        # 1. PRISER (Join query)
+        # 1. Hämta Priser (ProductPrice OCH Store)
         if len(args) > 1:
-            return create_mock_query([(price_obj, store_obj)])
+            m = MagicMock()
+            # Kedja för joins (Self-returning för att vara säker)
+            m.join.return_value = m
+            m.filter.return_value = m
+            m.order_by.return_value = m
+            m.all.return_value = [(price_obj, store_obj)]
+            return m
 
-        arg = args[0]
+        # 2. Räkna (func.count)
+        if "count" in first_arg_str.lower(): 
+            m = MagicMock()
+            m.filter.return_value.scalar.return_value = 100
+            return m
 
-        # 2. KATEGORIER
-        if is_model(arg, Category):
-            return create_mock_query([cat_obj])
+        # 3. Hämta Kategorier
+        if is_model(first_arg, Category):
+            m = MagicMock()
+            m.filter.return_value = m # Self-returning
+            m.all.return_value = [cat_obj]
+            m.first.return_value = cat_obj
+            return m
 
-        # 3. PRODUKTER
-        if is_model(arg, Product):
-            return create_mock_query([prod_obj], count_val=100)
+        # 4. Hämta Produkter (FIX: Self-returning mock för alla kedjor)
+        if is_model(first_arg, Product):
+            m = MagicMock()
+            
+            # Gör så att ALLA kedjbara metoder returnerar 'm' (sig själv)
+            # Detta löser problemet med att filter().order_by() skapar en ny okänd mock
+            m.filter.return_value = m
+            m.order_by.return_value = m
+            m.limit.return_value = m
+            m.offset.return_value = m
+            m.join.return_value = m
+            m.group_by.return_value = m
+            
+            # Resultat-metoder (dessa anropas på 'm' i slutet av kedjan)
+            m.count.return_value = 100
+            m.all.return_value = [prod_obj]
+            
+            return m
 
         return MagicMock()
 
     mock_db.query.side_effect = query_side_effect
     yield mock_db
 
-# VIKTIGT: Fixture för isolering även här
-@pytest.fixture(autouse=True)
-def mock_db_session():
-    app.dependency_overrides[get_db] = override_get_db
-    yield
-    app.dependency_overrides = {}
+app.dependency_overrides[get_db] = override_get_db
 
 def test_get_categories():
     response = client.get("/categories")
@@ -79,14 +89,16 @@ def test_get_categories():
     assert data[0]["name"] == "Hårvård"
 
 def test_get_single_category_pagination():
+    """Testar att pagination-data returneras korrekt."""
     response = client.get("/categories/1?page=2&limit=10")
     assert response.status_code == 200
     data = response.json()
     
-    # Paginering
+    # Verify Pagination
+    assert "pagination" in data
     assert data["pagination"]["total"] == 100
     assert data["pagination"]["page"] == 2
     
-    # Produkter
+    # Verify Data
     assert len(data["products"]) >= 1
     assert data["products"][0]["name"] == "H&S Schampo"
