@@ -6,25 +6,20 @@ from app.database import get_db
 router = APIRouter()
 
 @router.get("/")
-def get_best_deals(limit: int = 50, db: Session = Depends(get_db)):
-    """
-    Hämtar produkter där priset är sänkt (price < regular_price).
-    Sorterar på procentuell rabatt.
-    """
-    
-    # Vi använder SQL direkt för att enkelt räkna ut rabatt %
+def get_best_deals(limit: int = 20, db: Session = Depends(get_db)):
+    # OPTIMERAD SQL: Använder den indexerade kolumnen 'discount_percent'
+    # Detta är O(1) istället för O(N) och kommer inte krascha servern.
     sql = text("""
         SELECT 
             p.id, p.name, p.image_url, 
             pp.price, pp.regular_price, 
             s.name as store_name, pp.url,
-            CAST(((pp.regular_price - pp.price) / pp.regular_price * 100) AS INTEGER) as discount_percent
+            pp.discount_percent
         FROM product_prices pp
         JOIN products p ON pp.product_id = p.id
         JOIN stores s ON pp.store_id = s.id
-        WHERE pp.regular_price > pp.price
-        AND pp.regular_price > 0
-        ORDER BY discount_percent DESC
+        WHERE pp.discount_percent > 0
+        ORDER BY pp.discount_percent DESC
         LIMIT :limit
     """)
     
@@ -39,8 +34,8 @@ def get_best_deals(limit: int = 50, db: Session = Depends(get_db)):
             "price": row.price,
             "regular_price": row.regular_price,
             "store": row.store_name,
-            "url": row.url,
-            "discount_percent": row.discount_percent
+            "discount_percent": row.discount_percent,
+            "url": row.url
         })
-        
+    
     return deals

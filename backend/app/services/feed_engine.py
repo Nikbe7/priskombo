@@ -126,12 +126,21 @@ def process_feed_bulk(file_path: str, store_name: str, db: Session):
     for _, row in df.iterrows():
         pid = ean_map.get(row['ean'])
         if pid:
+            price = float(row['price'])
             reg_price = row.get('regular_price')
+            reg_price = float(reg_price) if pd.notna(reg_price) else None
+            
+            # RÄKNA UT RABATTEN DIREKT VID IMPORT
+            discount = 0
+            if reg_price and reg_price > price:
+                discount = int(((reg_price - price) / reg_price) * 100)
+
             prices_data.append({
                 "product_id": pid,
                 "store_id": store.id,
-                "price": row['price'],
-                "regular_price": reg_price if pd.notna(reg_price) else None,
+                "price": price,
+                "regular_price": reg_price,
+                "discount_percent": discount, # <-- LÄGG TILL DENNA
                 "url": row['url']
             })
     
