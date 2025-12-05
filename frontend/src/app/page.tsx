@@ -9,6 +9,7 @@ import { useCart } from "@/context/CartContext";
 type Category = { 
   id: number; 
   name: string; 
+  slug: string;
   parent_id: number | null;
   coming_soon: boolean;
 };
@@ -62,9 +63,9 @@ export default function Home() {
   const getSubCategories = (parentId: number) => categories.filter(c => c.parent_id === parentId);
 
   return (
-    <div className="min-h-screen"> {/* Tog bort pt-20 här för att låta hero gå till toppen */}
+    <div className="min-h-screen">
       
-      {/* HERO - Ökade top-padding (pt-32) för att kompensera för navbar */}
+      {/* HERO */}
       <section className="relative bg-gradient-to-b from-blue-50 to-white pt-32 pb-16 px-6 text-center">
         <div className="max-w-4xl mx-auto relative z-10">
           <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight mb-4 leading-tight">
@@ -97,7 +98,7 @@ export default function Home() {
         {searchResults.length === 0 && !loading && query.length === 0 && (
           <div className="space-y-16 animate-fade-in-up">
             
-            {/* KATEGORI-GRID - KOMPAKT & SMART HOVER */}
+            {/* KATEGORI-GRID */}
             <section>
               <h2 className="text-xl font-bold mb-6 text-slate-800 flex items-center gap-2">
                 <span className="w-1 h-6 bg-blue-600 rounded-full"></span>
@@ -106,14 +107,14 @@ export default function Home() {
               
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-3">
                 
-                {/* 1. KAMPANJER (Kompakt) */}
+                {/* 1. KAMPANJER */}
                 <Link href="/deals" className="relative group bg-gradient-to-br from-red-500 to-rose-600 rounded-xl p-3 shadow-md shadow-red-100 hover:shadow-lg hover:scale-[1.02] transition-all duration-300 flex flex-col items-center justify-center h-28 text-white overflow-hidden">
                     <div className="text-3xl mb-1 transform group-hover:scale-110 transition duration-300">🔥</div>
                     <h3 className="text-sm font-bold">Kampanjer</h3>
                     <p className="opacity-90 text-[10px] font-medium uppercase tracking-wide">Fynda nu</p>
                 </Link>
 
-                {/* 2. HUVUDKATEGORIER (Mindre och specifik hover) */}
+                {/* 2. HUVUDKATEGORIER */}
                 {rootCategories.map(root => {
                     const subs = getSubCategories(root.id);
                     const isComingSoon = root.coming_soon;
@@ -121,10 +122,10 @@ export default function Home() {
                     return (
                         <div 
                             key={root.id}
-                            onClick={() => !isComingSoon && router.push(`/category/${root.id}`)}
+                            // Huvudkategori: /parent-slug
+                            onClick={() => !isComingSoon && router.push(`/${root.slug}`)}
                             className={`relative group bg-white rounded-xl border border-slate-100 shadow-sm hover:shadow-md hover:border-blue-300 transition-all duration-300 h-28 flex flex-col items-center justify-center cursor-pointer overflow-visible ${isComingSoon ? 'opacity-60 cursor-default bg-slate-50' : ''}`}
                         >
-                            {/* Innehåll: Ikon och Rubrik (Peer för hover-trigger) */}
                             <div className={`peer h-full w-full flex flex-col items-center justify-center z-10 transition-all duration-300 ${!isComingSoon ? 'hover:-translate-y-1' : ''}`}>
                                 <div className="text-2xl mb-2 text-slate-400 peer-hover:text-slate-500 transition-colors">📦</div>
                                 <h3 className="font-bold text-slate-700 text-xs md:text-sm text-center px-1 leading-tight group-hover:text-blue-700">
@@ -133,7 +134,7 @@ export default function Home() {
                                 {isComingSoon && <span className="text-[9px] uppercase font-bold text-slate-400 mt-1 bg-white border border-slate-200 px-1.5 py-0.5 rounded">Snart</span>}
                             </div>
 
-                            {/* Dropdown-lista (Visas när man hovrar TEXTEN (peer) ELLER listan själv) */}
+                            {/* Dropdown-lista */}
                             {!isComingSoon && (
                                 <div 
                                     className="absolute inset-x-0 top-full mt-1 bg-white/95 backdrop-blur-md rounded-xl shadow-xl border border-blue-100 z-50 flex flex-col 
@@ -141,21 +142,20 @@ export default function Home() {
                                                transition-all duration-200 origin-top transform scale-95 peer-hover:scale-100 hover:scale-100"
                                     onClick={(e) => e.stopPropagation()} 
                                 >
-                                    {/* Header */}
                                     <div 
                                         className="p-2 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 cursor-pointer hover:bg-slate-100 rounded-t-xl"
-                                        onClick={() => router.push(`/category/${root.id}`)}
+                                        onClick={() => router.push(`/${root.slug}`)}
                                     >
                                         <span className="font-bold text-[10px] text-slate-500 uppercase tracking-wide">Gå till kategori</span>
                                         <span className="text-[10px] text-blue-600 font-bold">→</span>
                                     </div>
                                     
-                                    {/* Lista */}
                                     <div className="p-1 max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200">
                                         {subs.map(sub => (
                                             <Link 
                                                 key={sub.id} 
-                                                href={`/category/${sub.id}`}
+                                                // ÄNDRING: Bygg full sökväg /parent/child
+                                                href={`/${root.slug}/${sub.slug}`}
                                                 className="block px-3 py-1.5 text-xs text-slate-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors font-medium text-left"
                                             >
                                                 {sub.name}
@@ -212,7 +212,7 @@ export default function Home() {
             {searchResults.map((p) => (
               <div key={p.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex gap-5 items-center hover:shadow-md transition group">
                 <Link href={`/product/${p.id}`} className="w-16 h-16 bg-slate-50 rounded-lg flex items-center justify-center p-2 flex-shrink-0">
-                  {p.image_url ? <img src={p.image_url} alt="" className="w-full h-full object-contain mix-blend-multiply group-hover:scale-110 transition" /> : "📷"}
+                  {p.image_url ? <img src={p.image_url} alt="" className="w-full h-full object-contain mix-blend-multiply group-hover:scale-105 transition" /> : "📷"}
                 </Link>
                 <div className="flex-1 min-w-0">
                   <Link href={`/product/${p.id}`} className="block">

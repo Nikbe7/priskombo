@@ -4,13 +4,12 @@ import Home from '@/app/page';
 import { CartProvider } from '@/context/CartContext';
 
 // 1. MOCKA NAVIGATION (useRouter)
-// Detta krävs eftersom Home-komponenten nu använder router.push()
 const mockPush = jest.fn();
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
 }));
 
-// 2. MOCKA FETCH (Samma som förut)
+// 2. MOCKA FETCH
 // @ts-ignore
 global.fetch = jest.fn((url: string) => {
   const urlString = url.toString();
@@ -18,7 +17,8 @@ global.fetch = jest.fn((url: string) => {
   if (urlString.includes('/categories')) {
     return Promise.resolve({
       json: () => Promise.resolve([
-        { id: 1, name: 'Hårvård' }
+        // UPPDATERAT: Lade till 'slug', 'parent_id' och 'coming_soon'
+        { id: 1, name: 'Hårvård', slug: 'harvard', parent_id: null, coming_soon: false }
       ]),
     });
   }
@@ -36,7 +36,7 @@ global.fetch = jest.fn((url: string) => {
       ]),
     });
   }
-  // För deals
+  
   if (urlString.includes('/deals')) {
     return Promise.resolve({ json: () => Promise.resolve([]) });
   }
@@ -75,8 +75,23 @@ describe('Home Page', () => {
     await waitFor(() => {
       expect(screen.getByText('Test Shampoo')).toBeInTheDocument();
       expect(screen.getByText(/Från 100 kr/i)).toBeInTheDocument();
-      
       expect(screen.getByText('+ Lägg till')).toBeInTheDocument();
     });
+  });
+
+  it('renderar kategorilänkar med korrekt slug', async () => {
+    render(
+      <CartProvider>
+        <Home />
+      </CartProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Hårvård')).toBeInTheDocument();
+    });
+
+    // Klicka på kategorin och verifiera navigation
+    fireEvent.click(screen.getByText('Hårvård'));
+    expect(mockPush).toHaveBeenCalledWith('/harvard');
   });
 });

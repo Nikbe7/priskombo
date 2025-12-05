@@ -1,11 +1,20 @@
 import pandas as pd
+import os
+import json
+import time
+import google.generativeai as genai
 from sqlalchemy.orm import Session
 from sqlalchemy.dialects.postgresql import insert
-from app.models import Product, ProductPrice, Store, Category
+from app.models import Product, ProductPrice, Store
+
+# Läs API-nyckel för AI-brand detektion
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+GOOGLE_AI_MODEL = os.getenv("GOOGLE_AI_MODEL", "gemini-2.0-flash")
 
 def process_feed_bulk(file_path: str, store_name: str, db: Session):
     print(f"🚀 Startar Bulk-import för {store_name}...")
     
+    # 1. Hämta eller skapa Butiken
     store = db.query(Store).filter(Store.name == store_name).first()
     if not store:
         store = Store(name=store_name, base_shipping=49, free_shipping_limit=500)
@@ -13,6 +22,7 @@ def process_feed_bulk(file_path: str, store_name: str, db: Session):
         db.commit()
         db.refresh(store)
 
+    # 2. Läs CSV-filen med Pandas
     try:
         df = pd.read_csv(file_path, sep=None, engine='python', dtype={'EAN': str})
     except Exception as e:
@@ -21,49 +31,63 @@ def process_feed_bulk(file_path: str, store_name: str, db: Session):
 
     df.columns = [c.lower() for c in df.columns]
     
-    # UPPDATERAD MAPP: Lägg till ordinarie pris
+    # --- FÖRSÖK #1: Mappa kända kolumner (Brand/Manufacturer) ---
     column_map = {
-        'produktnamn': 'name',
-        'product name': 'name',
-        'pris': 'price',
-        'price': 'price',
-        'ordinarie pris': 'regular_price', # <-- Ny
-        'regular price': 'regular_price', # <-- Ny
-        'länk': 'url',
-        'product url': 'url',
-        'deeplink': 'url',
-        'bildlänk': 'image_url',
-        'image url': 'image_url',
-        'ean': 'ean',
-        'gtin': 'ean'
+        'produktnamn': 'name', 'product name': 'name',
+        'pris': 'price', 'price': 'price',
+        'ordinarie pris': 'regular_price', 'regular price': 'regular_price',
+        'länk': 'url', 'product url': 'url', 'deeplink': 'url',
+        'bildlänk': 'image_url', 'image url': 'image_url',
+        'ean': 'ean', 'gtin': 'ean',
+        # Kolla om vi har en varumärkeskolumn
+        'varumärke': 'brand', 'brand': 'brand', 'manufacturer': 'brand', 'tillverkare': 'brand'
     }
     df = df.rename(columns=column_map)
 
-    # Om regular_price saknas i filen, fyll med NaN (tomt)
-    if 'regular_price' not in df.columns:
-        df['regular_price'] = None
-
+    # Rensa och tvätta data
     df = df.dropna(subset=['ean', 'price'])
     df['ean'] = df['ean'].str.strip()
     
-    # Fixa priser (Price)
-    df['price'] = df['price'].astype(str).str.replace(',', '.', regex=False).str.replace(' kr', '', regex=False)
-    df['price'] = pd.to_numeric(df['price'], errors='coerce')
+    # Fixa priser
+    for col in ['price', 'regular_price']:
+        if col in df.columns:
+            df[col] = df[col].astype(str).str.replace(',', '.', regex=False).str.replace(' kr', '', regex=False)
+            df[col] = pd.to_numeric(df[col], errors='coerce')
     
-    # Fixa priser (Regular Price) - Samma logik
-    df['regular_price'] = df['regular_price'].astype(str).str.replace(',', '.', regex=False).str.replace(' kr', '', regex=False)
-    df['regular_price'] = pd.to_numeric(df['regular_price'], errors='coerce')
+    df = df.dropna(subset=['price']) # Pris är obligatoriskt
 
-    df = df.dropna(subset=['price'])
+    # --- FÖRSÖK #2: Gissnings-algoritm (Fallback) ---
+    # Om kolumnen 'brand' saknas eller är tom, gissa första ordet i namnet.
+    if 'brand' not in df.columns:
+        df['brand'] = None
 
-    print(f"📥 Läste in {len(df)} rader. Startar databas-operationer...")
+    # Fyll i saknade varumärken med första ordet i produktnamnet
+    # Ex: "L'Oreal Schampo" -> "L'Oreal"
+    mask_missing_brand = df['brand'].isna() | (df['brand'] == '')
+    df.loc[mask_missing_brand, 'brand'] = df.loc[mask_missing_brand, 'name'].apply(
+        lambda x: str(x).split(' ')[0] if pd.notna(x) else None
+    )
 
-    # FAS 1: PRODUKTER (Oförändrad)
+    # --- FÖRSÖK #3: AI-förfining (Om vi har nyckel) ---
+    # Vi kör detta för att städa upp gissningarna.
+    # T.ex. om gissningen blev "The" (från "The Ordinary"), ska AI fixa det till "The Ordinary".
+    if GOOGLE_API_KEY:
+        print("🤖 Kör AI för att tvätta varumärken...")
+        df = refine_brands_with_ai(df)
+    else:
+        print("⚠️ Ingen API-nyckel. Hoppar över AI-tvätt av varumärken.")
+
+    print(f"📥 Bearbetar {len(df)} rader...")
+
+    # ---------------------------------------------------------
+    # FAS 1: UPSERT PRODUKTER (Master Catalog)
+    # ---------------------------------------------------------
     products_data = []
     for _, row in df.iterrows():
         products_data.append({
             "ean": row['ean'],
             "name": row['name'],
+            "brand": str(row.get('brand', '')).strip(), # Spara det tvättade varumärket
             "image_url": row.get('image_url', None),
         })
 
@@ -73,16 +97,25 @@ def process_feed_bulk(file_path: str, store_name: str, db: Session):
         stmt = insert(Product).values(batch)
         stmt = stmt.on_conflict_do_update(
             index_elements=['ean'],
-            set_={'name': stmt.excluded.name, 'image_url': stmt.excluded.image_url}
+            set_={
+                'name': stmt.excluded.name, 
+                'image_url': stmt.excluded.image_url,
+                'brand': stmt.excluded.brand # Uppdatera brand om vi hittat ett bättre
+            }
         )
         db.execute(stmt)
         db.commit()
     
     print("✅ Produkter synkade.")
 
-    # FAS 2: PRISER (Uppdaterad med regular_price)
+    # ---------------------------------------------------------
+    # FAS 2: UPSERT PRISER
+    # ---------------------------------------------------------
+    # Hämta IDn för EAN
     all_eans = df['ean'].unique().tolist()
     ean_map = {}
+    
+    # Hämta i batchar för att undvika gigantiska SQL-frågor
     for i in range(0, len(all_eans), batch_size):
         ean_batch = all_eans[i:i+batch_size]
         res = db.query(Product.ean, Product.id).filter(Product.ean.in_(ean_batch)).all()
@@ -93,15 +126,16 @@ def process_feed_bulk(file_path: str, store_name: str, db: Session):
     for _, row in df.iterrows():
         pid = ean_map.get(row['ean'])
         if pid:
-            # HÄR SKICKAR VI MED REGULAR_PRICE
+            reg_price = row.get('regular_price')
             prices_data.append({
                 "product_id": pid,
                 "store_id": store.id,
                 "price": row['price'],
-                "regular_price": row['regular_price'] if pd.notna(row['regular_price']) else None, # <-- Ny
+                "regular_price": reg_price if pd.notna(reg_price) else None,
                 "url": row['url']
             })
     
+    # Bulk insert priser (med delete/insert strategi för säkerhet)
     for i in range(0, len(prices_data), batch_size):
         batch = prices_data[i:i+batch_size]
         pids_in_batch = [x['product_id'] for x in batch]
@@ -115,3 +149,72 @@ def process_feed_bulk(file_path: str, store_name: str, db: Session):
         db.commit()
 
     print(f"✅ Priser uppdaterade för {len(prices_data)} varor.")
+
+def refine_brands_with_ai(df):
+    """
+    Tar unika varumärkes-gissningar och ber AI tvätta dem.
+    Detta är mycket snabbare än att köra AI per rad.
+    """
+    try:
+        genai.configure(api_key=GOOGLE_API_KEY)
+        model = genai.GenerativeModel(GOOGLE_AI_MODEL, generation_config={"response_mime_type": "application/json"})
+        
+        # Hämta alla unika "gissningar"
+        unique_brands = df['brand'].unique().tolist()
+        
+        # Filtrera bort sånt som ser bra ut (för att spara tokens)
+        # T.ex. om det är 1 ord och längre än 3 bokstäver kanske vi litar på det?
+        # Här skickar vi allt för säkerhets skull, men i batchar.
+        
+        # Vi kör batchar om 500 märken
+        BATCH_SIZE = 500
+        corrections = {}
+
+        for i in range(0, len(unique_brands), BATCH_SIZE):
+            batch = unique_brands[i:i+BATCH_SIZE]
+            
+            # Exempel på namn för att ge AI kontext
+            # Vi skickar med 1 produktnamn per varumärke som exempel
+            examples = []
+            for b in batch:
+                example_prod = df[df['brand'] == b]['name'].iloc[0]
+                examples.append({"current_brand": str(b), "product_name": str(example_prod)})
+
+            prompt = f"""
+            Du är en expert på att städa produktdata.
+            Här är en lista med gissade varumärken (från första ordet i produktnamnet) och produktens fullständiga namn.
+            
+            Uppgift: Identifiera det KORREKTA varumärket.
+            - Om "current_brand" är rätt, behåll det.
+            - Om det är fel (t.ex. "The" istället för "The Ordinary"), rätta det.
+            - Om varumärket står längre in i namnet, extrahera det.
+            
+            Returnera en JSON-lista: [{{ "original": "The", "corrected": "The Ordinary" }}]
+            
+            Data:
+            {json.dumps(examples, ensure_ascii=False)}
+            """
+            
+            try:
+                response = model.generate_content(prompt)
+                matches = json.loads(response.text)
+                
+                for m in matches:
+                    if m.get('corrected'):
+                        corrections[m['original']] = m['corrected']
+                
+                time.sleep(1) # Rate limit paus
+
+            except Exception as e:
+                print(f"⚠️ AI Brand cleaning error (batch {i}): {e}")
+                continue
+
+        # Applicera rättningarna på dataframen
+        if corrections:
+            print(f"✨ AI rättade {len(corrections)} varumärken.")
+            df['brand'] = df['brand'].map(lambda x: corrections.get(str(x), x))
+            
+    except Exception as e:
+        print(f"⚠️ Kunde inte köra AI-tvätt: {e}")
+    
+    return df

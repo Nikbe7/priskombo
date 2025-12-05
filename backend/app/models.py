@@ -7,17 +7,14 @@ class Category(Base):
     __tablename__ = "categories"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True)
+    slug = Column(String, unique=True, index=True) # <-- NY KOLUMN
     
-    # --- NYTT HÄR ---
     parent_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
     coming_soon = Column(Boolean, default=False)
     
-    # Relation för att hitta underkategorier
     children = relationship("Category", 
                           backref=backref('parent', remote_side=[id]),
                           cascade="all, delete-orphan")
-    # ----------------
-
     products = relationship("Product", back_populates="category")
 
 class Product(Base):
@@ -25,10 +22,10 @@ class Product(Base):
     id = Column(Integer, primary_key=True, index=True)
     ean = Column(String, unique=True, index=True)
     name = Column(String)
+    brand = Column(String, index=True, nullable=True)
     image_url = Column(Text, nullable=True)
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
     
-    # Sortering
     popularity_score = Column(Integer, default=0)
     rating = Column(Float, default=0.0)
     created_at = Column(DateTime, default=datetime.utcnow)
