@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, subqueryload, joinedload
 from sqlalchemy import func, desc, asc, distinct
 from typing import Optional, List
 
@@ -91,12 +91,32 @@ def get_category_by_slug(
         query = query.filter(ProductPrice.regular_price > 0).order_by(max_d.desc())
 
     total_products = query.count()
+    
+    # subqueryload: Hämtar alla priser för dessa 20 produkter i EN extra fråga (istället för 20 st)
+    # joinedload: Hämtar butiksinfo (Store) direkt tillsammans med priset
+    query = query.options(
+        subqueryload(Product.prices).joinedload(ProductPrice.store)
+    )
+
     products = query.limit(limit).offset((page - 1) * limit).all()
     
     product_results = []
     for product in products:
-        prices = db.query(ProductPrice, Store).join(Store).filter(ProductPrice.product_id == product.id).order_by(ProductPrice.price.asc()).all()
-        price_list = [{"store": s.name, "price": p.price, "url": p.url, "regular_price": p.regular_price} for p, s in prices]
+        # Nu finns priserna redan laddade i product.prices!
+        # Vi sorterar dem i Python istället för i databasen (går supersnabbt på så få objekt)
+        sorted_prices = sorted(product.prices, key=lambda p: p.price)
+        
+        price_list = []
+        for p in sorted_prices:
+            # Vi kollar så att p.store finns (ifall datan skulle vara trasig)
+            if p.store:
+                price_list.append({
+                    "store": p.store.name, 
+                    "price": p.price, 
+                    "url": p.url, 
+                    "regular_price": p.regular_price
+                })
+
         product_results.append({
             "id": product.id,
             "name": product.name,
