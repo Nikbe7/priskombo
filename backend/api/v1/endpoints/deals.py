@@ -7,10 +7,8 @@ router = APIRouter()
 
 @router.get("/")
 def get_best_deals(limit: int = 20, db: Session = Depends(get_db)):
-    # OPTIMERAD SQL: Använder den indexerade kolumnen 'discount_percent'
-    # Detta är O(1) istället för O(N) och kommer inte krascha servern.
     sql = text("""
-        SELECT 
+        SELECT DISTINCT ON (p.id)
             p.id, p.name, p.image_url, 
             pp.price, pp.regular_price, 
             s.name as store_name, pp.url,
@@ -19,7 +17,7 @@ def get_best_deals(limit: int = 20, db: Session = Depends(get_db)):
         JOIN products p ON pp.product_id = p.id
         JOIN stores s ON pp.store_id = s.id
         WHERE pp.discount_percent > 0
-        ORDER BY pp.discount_percent DESC
+        ORDER BY p.id, pp.discount_percent DESC
         LIMIT :limit
     """)
     

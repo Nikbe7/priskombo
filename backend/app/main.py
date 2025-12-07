@@ -36,20 +36,16 @@ def read_root():
 
 @app.get("/search")
 def search(q: str, db: Session = Depends(get_db)):
-    if not q or len(q) < 2: # Sök inte på 1 bokstav
+    if not q or len(q) < 2:
         return []
 
-    # OPTIMERAD SÖKNING:
-    # 1. Hämta Produkter, Priser och Butiker i EN fråga (JOIN)
-    # 2. Begränsa till 50 träffar för att inte döda frontend
     query_result = db.query(Product, ProductPrice, Store)\
         .join(ProductPrice, Product.id == ProductPrice.product_id)\
         .join(Store, ProductPrice.store_id == Store.id)\
         .filter(Product.name.ilike(f"%{q}%"))\
         .limit(200)\
-        .all() # Hämtar max 200 rader (t.ex. 50 produkter * 4 butiker)
+        .all()
 
-    # 3. Gruppera resultatet i Python (mycket snabbare än SQL-anrop)
     results_map = {}
     
     for product, price, store in query_result:
@@ -65,12 +61,12 @@ def search(q: str, db: Session = Depends(get_db)):
         results_map[product.id]["prices"].append({
             "store": store.name,
             "price": price.price,
+            "regular_price": price.regular_price,       # <--- NYTT
+            "discount_percent": price.discount_percent, # <--- NYTT
             "url": price.url
         })
     
-    # 4. Returnera som lista och sortera ev. på bästa pris
-    final_results = list(results_map.values())
-    return final_results
+    return list(results_map.values())
 
 # --- NY ENDPOINT: OPTIMERA ---
 @app.post("/optimize")

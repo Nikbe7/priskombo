@@ -15,7 +15,12 @@ def override_get_db():
     
     # Skapa fake-data
     prod = MockItem(id=1, name="Nivea Creme", ean="123", image_url="img.jpg")
-    price = MockItem(price=50.0, url="http://...")
+    price = MockItem(
+        price=50.0, 
+        regular_price=60.0,
+        discount_percent=10,
+        url="http://..."
+    )
     store = MockItem(name="Apotea")
     
     # Mocka den komplexa sök-kedjan:

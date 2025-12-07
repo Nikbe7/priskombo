@@ -5,6 +5,7 @@ import Link from "next/link";
 import API_URL from "@/lib/config";
 import { useCart } from "@/context/CartContext";
 
+// Uppdaterad typ för att inkludera rea-fält
 type ProductDetails = {
   id: number;
   name: string;
@@ -14,6 +15,8 @@ type ProductDetails = {
   prices: { 
     store: string; 
     price: number; 
+    regular_price?: number; // Nytt fält
+    discount_percent?: number; // Nytt fält
     url: string; 
     shipping: number;
   }[];
@@ -38,91 +41,99 @@ export default function ProductPage() {
     }
   }, [params.id]);
 
-  if (loading) return <div className="p-20 text-center text-gray-500 pt-32">Laddar produkt...</div>;
-  if (!product) return <div className="p-20 text-center pt-32">Produkten kunde inte hittas.</div>;
+  if (loading) return <div className="p-20 text-center text-gray-500 pt-32">Laddar produkt... 🧴</div>;
+  if (!product) return <div className="p-20 text-center text-red-500 pt-32">Produkten hittades inte.</div>;
 
-  const bestPrice = product.prices[0];
+  const bestPrice = product.prices[0]?.price || 0;
 
   return (
-    // Lade till pt-24 här
-    <div className="min-h-screen bg-gray-50 p-6 font-sans pb-32 pt-24">
-      <div className="max-w-5xl mx-auto">
+    <div className="min-h-screen bg-gray-50 p-6 md:p-12 font-sans pb-32 pt-24">
+      <div className="max-w-4xl mx-auto bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
         
-        <div className="text-sm text-gray-500 mb-6">
-          <Link href="/" className="hover:text-blue-600">Hem</Link> 
-          <span className="mx-2">/</span>
-          {product.category && <span className="text-gray-700">{product.category}</span>}
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="md:flex">
-            
-            {/* BILD */}
-            <div className="md:w-1/3 bg-gray-50 p-8 flex items-center justify-center border-r border-gray-100">
-              {product.image_url ? (
-                <img src={product.image_url} alt={product.name} className="max-w-full max-h-80 object-contain mix-blend-multiply" />
-              ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2">
+          
+          {/* BILD */}
+          <div className="bg-gray-50 p-10 flex items-center justify-center border-b md:border-b-0 md:border-r border-gray-100 relative">
+             <Link href="/" className="absolute top-4 left-4 text-gray-400 hover:text-gray-600 transition">
+               ← Tillbaka
+             </Link>
+             {product.image_url ? (
+                <img src={product.image_url} alt={product.name} className="max-w-full max-h-80 object-contain mix-blend-multiply hover:scale-105 transition duration-500" />
+             ) : (
                 <span className="text-6xl">📦</span>
-              )}
+             )}
+          </div>
+
+          {/* INFO */}
+          <div className="p-8 md:p-12 flex flex-col justify-center">
+            <div className="text-sm font-bold text-blue-600 uppercase tracking-wider mb-2">{product.category || "Okategoriserad"}</div>
+            <h1 className="text-3xl font-extrabold text-gray-900 mb-4 leading-tight">{product.name}</h1>
+            
+            <div className="flex items-center gap-4 mb-8">
+              <span className="text-4xl font-extrabold text-gray-900">{bestPrice} kr</span>
+              <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                Jämför {product.prices.length} butiker
+              </span>
             </div>
 
-            {/* INFO */}
-            <div className="md:w-2/3 p-8">
-              <h1 className="text-3xl font-extrabold text-gray-900 mb-2">{product.name}</h1>
-              <p className="text-gray-400 text-sm font-mono mb-6">EAN: {product.ean}</p>
-
-              {/* BÄSTA PRISET & ACTION */}
-              <div className="bg-blue-50 border border-blue-100 rounded-xl p-6 mb-8 flex flex-col md:flex-row justify-between items-center gap-4">
-                <div>
-                  <span className="text-blue-600 font-bold text-sm uppercase tracking-wide">Bästa priset just nu</span>
-                  <div className="text-4xl font-extrabold text-gray-900 mt-1">{bestPrice.price} kr</div>
-                  <div className="text-gray-500 text-sm mt-1">hos {bestPrice.store}</div>
-                </div>
-                
-                <div className="flex gap-3">
-                    {/* KNAPP 1: KÖP NU (Går till butiken) */}
-                    <a 
-                      href={bestPrice.url} 
-                      target="_blank"
-                      className="bg-white text-blue-600 border border-blue-200 px-6 py-3 rounded-full font-bold shadow-sm hover:bg-blue-50 transition"
-                    >
-                      Gå till butik ↗
-                    </a>
-
-                    {/* KNAPP 2: LÄGG I PRISKOMBO (Global Korg) */}
-                    <button 
-                      onClick={() => addToBasket(product as any)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-full font-bold shadow-lg transition transform hover:scale-105"
-                    >
-                      + Lägg till
-                    </button>
-                </div>
-              </div>
-
-              {/* LISTA */}
-              <h3 className="font-bold text-gray-800 mb-4 text-lg">Jämför alla butiker ({product.prices.length})</h3>
-              <div className="space-y-3">
-                {product.prices.map((offer, idx) => (
-                  <div key={idx} className="flex justify-between items-center p-4 border rounded-lg hover:border-blue-300 transition bg-white">
-                    <div className="flex items-center gap-3">
-                      <span className="font-bold text-gray-700">{offer.store}</span>
-                      {idx === 0 && <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded font-bold">Billigast</span>}
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <div className="font-bold text-lg">{offer.price} kr</div>
-                        <div className="text-xs text-gray-400">Frakt: {offer.shipping} kr</div>
-                      </div>
-                      <a href={offer.url} target="_blank" className="text-blue-600 font-medium hover:underline text-sm px-3 py-1 bg-blue-50 rounded">
-                        Till butik →
-                      </a>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
+            <button 
+              onClick={() => addToBasket({
+                  id: product.id, name: product.name, ean: product.ean, image_url: product.image_url, 
+                  prices: product.prices
+              } as any)}
+              className="w-full bg-blue-600 text-white font-bold py-4 rounded-xl hover:bg-blue-700 transition shadow-lg shadow-blue-200 mb-6"
+            >
+              Lägg i varukorg
+            </button>
+            
+            <div className="text-xs text-gray-400">
+              EAN: {product.ean}
             </div>
           </div>
+        </div>
+
+        {/* PRISLISTA */}
+        <div className="p-8 bg-gray-50 border-t border-gray-100">
+          <h3 className="font-bold text-gray-800 mb-4 text-lg">Jämför alla butiker ({product.prices.length})</h3>
+          <div className="space-y-3">
+            {product.prices.map((offer, idx) => (
+              <div key={idx} className="flex justify-between items-center p-4 border rounded-lg hover:border-blue-300 transition bg-white relative overflow-hidden group">
+                
+                <div className="flex items-center gap-3 relative z-10">
+                  <span className="font-bold text-gray-700">{offer.store}</span>
+                  {idx === 0 && <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded font-bold">Billigast</span>}
+                  
+                  {/* NYTT: Visa rea-etikett */}
+                  {offer.discount_percent && offer.discount_percent > 0 ? (
+                    <span className="bg-red-100 text-red-600 text-xs px-2 py-1 rounded font-bold animate-pulse">
+                      -{offer.discount_percent}%
+                    </span>
+                  ) : null}
+                </div>
+
+                <div className="flex items-center gap-4 relative z-10">
+                  <div className="text-right">
+                    <div className="font-bold text-lg text-gray-900">{offer.price} kr</div>
+                    
+                    {/* Visa ordinarie pris överstruket om det finns */}
+                    {offer.regular_price && offer.regular_price > offer.price && (
+                      <div className="text-xs text-gray-400 line-through">
+                        {offer.regular_price} kr
+                      </div>
+                    )}
+
+                    {/* Visa fraktpriset alltid, oavsett om det är rea eller inte */}
+                    <div className="text-xs text-gray-400">Frakt: {offer.shipping} kr</div>
+                  </div>
+                  
+                  <a href={offer.url} target="_blank" className="text-blue-600 font-medium hover:underline text-sm px-3 py-1 bg-blue-50 rounded hover:bg-blue-100 transition">
+                    Till butik →
+                  </a>
+                </div>
+              </div>
+            ))}
+          </div>
+
         </div>
       </div>
     </div>

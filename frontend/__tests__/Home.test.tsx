@@ -31,7 +31,13 @@ global.fetch = jest.fn((url: string) => {
           name: 'Test Shampoo', 
           ean: '123', 
           image_url: null,
-          prices: [{ price: 100, store: 'Apotea', url: '#' }] 
+          prices: [{ 
+              price: 100, 
+              store: 'Apotea', 
+              url: '#', 
+              regular_price: 120,
+              discount_percent: 17 
+          }]
         }
       ]),
     });

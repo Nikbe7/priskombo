@@ -48,6 +48,7 @@ class ProductPrice(Base):
     store_id = Column(Integer, ForeignKey("stores.id"))
     price = Column(Float)
     regular_price = Column(Float, nullable=True)
+    discount_percent = Column(Integer, default=0)
     url = Column(Text)
     updated_at = Column(DateTime, default=datetime.utcnow)
 

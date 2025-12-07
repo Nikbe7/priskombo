@@ -40,6 +40,11 @@ describe('Deals Page', () => {
       // Kolla att produkten syns
       expect(screen.getByText('Super Schampo')).toBeInTheDocument();
       
+      // Kolla att gamla priset visas och är överstruket
+      const oldPrice = screen.getByText('100 kr');
+      expect(oldPrice).toBeInTheDocument();
+      expect(oldPrice).toHaveClass('line-through');
+
       // Kolla att rabatten syns (både pris och procent)
       expect(screen.getByText('80 kr')).toBeInTheDocument();
       expect(screen.getByText('-20%')).toBeInTheDocument();

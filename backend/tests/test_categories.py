@@ -21,7 +21,13 @@ def override_get_db():
     
     cat = MockItem(id=10, name="Test Kategori")
     
-    price = MockItem(price=100.0, url="http://...", regular_price=None, product_id=1)
+    price = MockItem(
+        price=100.0, 
+        url="http://...", 
+        regular_price=None, 
+        discount_percent=0,
+        product_id=1
+    )
     store = MockItem(name="Test Store", base_shipping=49)
 
     # Helper för att identifiera modeller i query()

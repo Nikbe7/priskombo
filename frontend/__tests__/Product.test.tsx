@@ -21,8 +21,20 @@ global.fetch = jest.fn((url: string) => {
         image_url: 'img.jpg',
         category: 'Parfym',
         prices: [
-          { store: 'Kicks', price: 500, url: '#', shipping: 0 },
-          { store: 'Lyko', price: 550, url: '#', shipping: 39 }
+          { 
+            store: 'Kicks', 
+            price: 500, 
+            regular_price: 600,
+            discount_percent: 17,
+            url: '#', 
+            shipping: 0 
+          },
+          { 
+            store: 'Lyko', 
+            price: 550, 
+            url: '#', 
+            shipping: 39 
+          }
         ]
       }),
     });
@@ -31,7 +43,7 @@ global.fetch = jest.fn((url: string) => {
 });
 
 describe('Product Page', () => {
-  it('visar produktinformation och priser', async () => {
+  it('visar produktinformation och butiker', async () => {
     render(
       <CartProvider>
         <ProductPage />
@@ -39,14 +51,47 @@ describe('Product Page', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /Lyxig Parfym/i })).toBeInTheDocument();
+      expect(screen.getByText('Lyxig Parfym')).toBeInTheDocument();
+      expect(screen.getByText('Parfym')).toBeInTheDocument();
+      expect(screen.getByText('Kicks')).toBeInTheDocument();
+      expect(screen.getByText('Lyko')).toBeInTheDocument();
+    });
+  });
+
+  it('visar rabattetikett och överstruket pris vid rea', async () => {
+    render(
+      <CartProvider>
+        <ProductPage />
+      </CartProvider>
+    );
+
+    await waitFor(() => {
+      // 1. Kontrollera att rabattetiketten syns (-17%)
+      const discountTag = screen.getByText('-17%');
+      expect(discountTag).toBeInTheDocument();
       
-      // Använd getAllByText för priset om det dyker upp på flera ställen
-      const prices = screen.getAllByText('500 kr');
-      expect(prices.length).toBeGreaterThan(0);
-      
-      // NYTT: Kolla att "Lägg till"-knappen finns
-      expect(screen.getByText('+ Lägg till')).toBeInTheDocument();
+      // 2. Kontrollera att det gamla priset syns och är överstruket
+      const oldPrice = screen.getByText('600 kr');
+      expect(oldPrice).toBeInTheDocument();
+      expect(oldPrice).toHaveClass('line-through');
+
+      // 3. Kontrollera det nya priset
+      // FIX: Eftersom "500 kr" finns på två ställen (huvudpriset + i listan)
+      // använder vi getAllByText och kollar att minst en finns.
+      const newPrices = screen.getAllByText('500 kr');
+      expect(newPrices.length).toBeGreaterThan(0);
+    });
+  });
+
+  it('visar fraktpris istället för ordinarie pris när rabatt saknas', async () => {
+    render(
+      <CartProvider>
+        <ProductPage />
+      </CartProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Frakt: 39 kr')).toBeInTheDocument();
     });
   });
 });

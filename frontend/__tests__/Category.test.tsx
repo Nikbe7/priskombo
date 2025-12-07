@@ -1,11 +1,9 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-// VIKTIGT: Vi importerar nu från din slug-baserade sida
 import DynamicCategoryPage from '@/app/[...slug]/page';
 import { CartProvider } from '@/context/CartContext';
 
-// 1. Mocka IntersectionObserver (används för infinite scroll)
-// Detta krävs för att komponenten inte ska krascha i testmiljön
+// 1. Mocka IntersectionObserver
 beforeEach(() => {
   // @ts-ignore
   global.IntersectionObserver = class IntersectionObserver {
@@ -18,61 +16,86 @@ beforeEach(() => {
   };
 });
 
-// 2. Mocka Navigation
+// 2. Mocka Navigation (Next.js App Router)
 const mockReplace = jest.fn();
 const mockPush = jest.fn();
 
-jest.mock('next/navigation', () => ({
-  // Simulera att vi är på URL:en /skonhet-halsa/harvard
-  useParams: () => ({ slug: ['skonhet-halsa', 'harvard'] }),
-  useRouter: () => ({ 
-    push: mockPush,
-    replace: mockReplace 
-  }),
-  useSearchParams: () => ({ 
-    get: (key: string) => null,
-    toString: () => '' 
-  }),
-}));
+// Skapa stabila objekt för att undvika oändliga loopar i useEffect
+const mockParams = { slug: ['skonhet-halsa', 'harvard'] };
+const mockSearchParams = new URLSearchParams('');
+
+jest.mock('next/navigation', () => {
+  return {
+    __esModule: true,
+    useParams: () => mockParams,
+    useRouter: () => ({ 
+      push: mockPush,     // Används oftast för sortering
+      replace: mockReplace // Används ibland för filter
+    }),
+    usePathname: () => '/skonhet-halsa/harvard', // VIKTIGT: Behövs för att bygga URL
+    useSearchParams: () => mockSearchParams,
+  };
+});
 
 // 3. Mocka Fetch
 // @ts-ignore
 global.fetch = jest.fn((url: string) => {
-  const urlString = url.toString();
+  const urlStr = url.toString();
 
-  // Mocka /categories response (för att bygga upp sidstrukturen)
-  if (urlString.includes('/categories')) {
+  // Mocka kategorier
+  if (urlStr.includes('/categories')) {
     return Promise.resolve({
+      ok: true,
       json: () => Promise.resolve([
-        { id: 1, name: 'Skönhet & Hälsa', slug: 'skonhet-halsa', parent_id: null },
-        { id: 2, name: 'Hårvård', slug: 'harvard', parent_id: 1 }
+        { 
+          id: 10, 
+          name: 'Skönhet & Hälsa', 
+          slug: 'skonhet-halsa', 
+          parent_id: null, 
+          coming_soon: false 
+        },
+        { 
+          id: 11, 
+          name: 'Hårvård', 
+          slug: 'harvard', 
+          parent_id: 10, 
+          coming_soon: false 
+        }
       ]),
     });
   }
 
-  // Mocka /products response
-  // VIKTIGT: Returnera det nya formatet { total: number, data: [] }
-  if (urlString.includes('/products')) {
+  // Mocka produkter
+  if (urlStr.includes('products')) {
     return Promise.resolve({
+      ok: true,
       json: () => Promise.resolve({
-        total: 150, // Totalt antal produkter
         data: [
           {
             id: 101,
             name: 'Lyxigt Schampo',
+            ean: '73123456',
             image_url: null,
-            category_id: 2,
-            prices: [{ price: 89, store: 'Lyko', url: '#' }]
+            prices: [{ price: 89, store: 'Apotea', url: '#', shipping: 49 }]
           }
-        ]
+        ],
+        total: 150
       }),
     });
   }
   
-  return Promise.resolve({ json: () => Promise.resolve({}) });
+  return Promise.resolve({
+    ok: false,
+    json: () => Promise.resolve([])
+  });
 });
 
 describe('Dynamic Category Page', () => {
+  beforeEach(() => {
+    mockPush.mockClear();
+    mockReplace.mockClear();
+  });
+
   it('visar korrekt brödsmulor och produktdata', async () => {
     render(
       <CartProvider>
@@ -81,12 +104,10 @@ describe('Dynamic Category Page', () => {
     );
 
     await waitFor(() => {
-      // 1. Kolla Huvudrubrik (Kategorinamn)
-      // FIXAT: Lade till level: 1 för att specifikt matcha <h1> och ignorera <h3> i sidopanelen
+      // 1. Kolla Huvudrubrik
       expect(screen.getByRole('heading', { name: /Hårvård/i, level: 1 })).toBeInTheDocument();
       
-      // 2. Kolla Brödsmulor (Parent category name)
-      // "Skönhet & Hälsa" ska finnas som länk i toppen
+      // 2. Kolla Brödsmulor
       expect(screen.getByText('Skönhet & Hälsa')).toBeInTheDocument();
 
       // 3. Kolla Produkt
@@ -105,19 +126,16 @@ describe('Dynamic Category Page', () => {
       </CartProvider>
     );
 
-    // Vänta på att sidan laddas och produkten syns
+    // Vänta på att sidan laddas
     await waitFor(() => screen.getByText('Lyxigt Schampo'));
 
-    // Hitta select-boxen för sortering
-    const sortSelect = screen.getByRole('combobox'); 
-
-    // Ändra till "Lägsta pris"
+    // Byt sortering
+    const sortSelect = screen.getByRole('combobox');
     fireEvent.change(sortSelect, { target: { value: 'price_asc' } });
 
-    // Verifiera att URL uppdateras med ?sort=price_asc
-    // OBS: Komponenten kör router.push med hela sökvägen
+    // Verifiera att URL:en uppdateras via router.push (eftersom det var det som användes i originalkoden)
     await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('sort=price_asc'));
+      expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('sort=price_asc'));
     });
   });
 });

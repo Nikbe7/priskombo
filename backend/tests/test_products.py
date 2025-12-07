@@ -21,7 +21,14 @@ def override_get_db():
     
     cat = MockItem(id=10, name="Test Kategori")
     
-    price = MockItem(price=100.0, url="http://...", regular_price=None, product_id=1)
+    price = MockItem(
+        price=100.0, 
+        regular_price=120.0,
+        discount_percent=20,
+        url="http://...", 
+        product_id=1,
+        store_id=1
+    )
     store = MockItem(name="Test Store", base_shipping=49)
 
     # Helper för att identifiera modeller i query()
@@ -117,3 +124,24 @@ def test_get_product_details():
     assert data["category"] == "Test Kategori"
     assert len(data["prices"]) == 1
     assert data["prices"][0]["store"] == "Test Store"
+
+def test_get_single_product_includes_deals():
+    """Testar att endpointen /products/{id} returnerar rabatt och ordinarie pris."""
+    response = client.get("/products/1")
+    assert response.status_code == 200
+    data = response.json()
+    
+    # Verifiera grunddata
+    assert data["name"] == "Produkt A"
+    
+    # Verifiera att vi har priser
+    assert len(data["prices"]) > 0
+    first_price = data["prices"][0]
+    
+    # Verifiera DE NYA FÄLTEN
+    assert "regular_price" in first_price
+    assert "discount_percent" in first_price
+    
+    # Verifiera att värdena från mocken kommer igenom
+    assert first_price["regular_price"] == 120.0
+    assert first_price["discount_percent"] == 20

@@ -102,12 +102,14 @@ def get_product_details(product_id: int, db: Session = Depends(get_db)):
     if not product:
         raise HTTPException(status_code=404, detail="Produkten hittades inte")
 
+    # Hämta kategori-namn
     category_name = None
     if product.category_id:
         cat = db.query(Category).filter(Category.id == product.category_id).first()
         if cat:
             category_name = cat.name
 
+    # Hämta priser
     prices = db.query(ProductPrice, Store)\
         .join(Store)\
         .filter(ProductPrice.product_id == product.id)\
@@ -119,9 +121,11 @@ def get_product_details(product_id: int, db: Session = Depends(get_db)):
         price_list.append({
             "store": store.name,
             "price": price.price,
+            "regular_price": price.regular_price, 
+            "discount_percent": price.discount_percent,
             "url": price.url,
-            "shipping": getattr(store, "base_shipping", 0),
-            "in_stock": True 
+            "in_stock": True,
+            "shipping": store.base_shipping
         })
 
     return {
