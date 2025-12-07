@@ -17,10 +17,15 @@ export default function DealsPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const uniqueDeals = deals.filter((deal, index, self) =>
+    index === self.findIndex((t) => (
+      t.id === deal.id
+    ))
+  );
+
   if (loading) return <div className="p-20 text-center text-gray-500 pt-32">Letar efter fynd... 🔥</div>;
 
   return (
-    // Lade till pt-24 här
     <div className="min-h-screen bg-gray-50 p-8 font-sans pb-32 pt-24">
       <div className="max-w-6xl mx-auto">
         
@@ -31,13 +36,14 @@ export default function DealsPage() {
           <p className="text-gray-500">Priserna som sänkts mest just nu.</p>
         </header>
 
-        {deals.length === 0 ? (
+        {uniqueDeals.length === 0 ? (
           <div className="text-center p-10 bg-white rounded-xl shadow-sm">
             Hittade inga deals just nu. Kom tillbaka senare!
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {deals.map((p) => (
+            {/* Vi använder nu uniqueDeals istället för deals */}
+            {uniqueDeals.map((p) => (
               <div key={p.id} className="relative bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition group">
                 
                 {/* Rabatt-etikett */}
