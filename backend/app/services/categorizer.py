@@ -2,7 +2,6 @@ import os
 import json
 import time
 import re
-# NY IMPORT: Använd det nya biblioteket
 from google import genai
 from google.genai import types
 from sqlalchemy.orm import Session

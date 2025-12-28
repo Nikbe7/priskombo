@@ -34,6 +34,10 @@ class BasketRequest(BaseModel):
 def read_root():
     return {"message": "API is running"}
 
+@app.get("/health")
+def health_check():
+    return {"status": "ok", "message": "I am awake!"}
+
 @app.get("/search")
 def search(q: str, db: Session = Depends(get_db)):
     if not q or len(q) < 2:
