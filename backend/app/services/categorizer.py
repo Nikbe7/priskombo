@@ -2,66 +2,67 @@ import os
 import json
 import time
 import re
-import google.generativeai as genai
+# NY IMPORT: Använd det nya biblioteket
+from google import genai
+from google.genai import types
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from app.database import SessionLocal
 from app.models import Product, Category
 
 # Läs API-nyckel och modell från miljön
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 GOOGLE_AI_MODEL = os.getenv("GOOGLE_AI_MODEL", "gemini-2.0-flash")
 
-def assign_categories_optimized():
-    db = SessionLocal()
-    
+def categorize_uncategorized_products(db: Session, limit: int = None):
+    """
+    Huvudfunktion som körs via manage.py.
+    """
     # 1. Förberedelser
     categories = db.query(Category.id, Category.name).all()
     if not categories:
-        print("❌ Inga kategorier hittades.")
+        print("❌ Inga kategorier hittades i databasen.")
         return
     
-    # Optimering: Hämta bara namn och ID, inte hela objekten
     cat_names = [c.name for c in categories]
     cat_map = {c.name: c.id for c in categories}
     
-    total_products = db.query(Product.id).filter(Product.category_id == None).count()
-    print(f"🕵️‍♂️ Hittade totalt {total_products} okategoriserade produkter.")
+    total_uncat = db.query(Product.id).filter(Product.category_id == None).count()
+    print(f"🕵️‍♂️ Hittade totalt {total_uncat} okategoriserade produkter.")
     
-    if total_products == 0:
+    if total_uncat == 0:
         print("✅ Allt är redan kategoriserat!")
         return
 
     # ---------------------------------------------------------
-    # STEG 1: SQL-BASERAD NYCKELORDSSÖKNING (Algoritm: Set-based Update)
+    # STEG 1: SQL-BASERAD NYCKELORDSSÖKNING (Gratis & Supersnabb)
     # ---------------------------------------------------------
-    print("\n⚡ STEG 1: Kör SQL-baserad massuppdatering...")
-    
+    print("\n⚡ STEG 1: Kör SQL-baserad massuppdatering (Regex)...")
     keyword_hits = run_sql_keyword_categorization(db, cat_map)
     print(f"   -> Databasen uppdaterade {keyword_hits} produkter direkt.")
 
     # ---------------------------------------------------------
-    # STEG 2: KÖR AI PÅ RESTEN (Batchad & JSON Schema)
+    # STEG 2: KÖR AI PÅ RESTEN
     # ---------------------------------------------------------
-    if GOOGLE_API_KEY:
-        # Räkna om efter steg 1
-        remaining_count = db.query(Product.id).filter(Product.category_id == None).count()
-        
-        if remaining_count > 0:
-            print(f"\n🤖 STEG 2: Kör AI ({GOOGLE_AI_MODEL}) på återstående {remaining_count} produkter...")
-            run_ai_categorization_bulk(db, cat_names, cat_map)
-        else:
-            print("✨ Inget kvar för AI att göra!")
-    else:
-        print("\n⚠️ Ingen API-nyckel. Hoppar över AI-steget.")
+    if not GOOGLE_API_KEY:
+        print("\n⚠️ Ingen GOOGLE_API_KEY. Hoppar över AI-steget.")
+        return
 
-    db.close()
+    # Räkna om vad som är kvar
+    remaining_count = db.query(Product.id).filter(Product.category_id == None).count()
+    
+    if remaining_count > 0:
+        print(f"\n🤖 STEG 2: Kör AI ({GOOGLE_AI_MODEL}) på återstående produkter...")
+        run_ai_categorization_bulk(db, cat_names, cat_map, limit_count=limit)
+    else:
+        print("✨ Inget kvar för AI att göra efter Regex-steget!")
+
     print("\n✅ Kategorisering klar.")
 
-def run_sql_keyword_categorization(db, cat_map):
+def run_sql_keyword_categorization(db: Session, cat_map: dict):
     """
     Körs direkt i databasen via Regex. Extremt snabbt.
     """
+    # Här ligger alla dina smarta regler
     rules = {
         # --- SKÖNHET & HÄLSA ---
         "Manligt": ["men", "homme", "man", "skägg", "beard", "herr", "shaving", "rakhyvel", "rakskum", "aftershave"],
@@ -123,7 +124,7 @@ def run_sql_keyword_categorization(db, cat_map):
         "Godis & Snacks": ["choklad", "chips", "godis", "nötter", "marabou", "kex", "ostbågar"],
         "Dryck": ["coca-cola", "pepsi", "fanta", "ramlösa", "loka", "energidryck", "nocco", "celsius"],
         "Kaffe & Te": ["kaffe", "te", "espresso", "kapslar", "zoegas", "löfbergs", "lipton"],
-
+        
         # --- BEGAGNAT ---
         "Begagnat Mode": ["second hand", "pre-owned", "vintage", "använd", "begagnad"],
         "Begagnad Elektronik": ["refurbished", "begagnad mobil", "begagnad dator"],
@@ -139,6 +140,7 @@ def run_sql_keyword_categorization(db, cat_map):
         patterns = []
         for k in keywords:
             safe_k = re.escape(k) 
+            # Om ordet är kort (<=3 tecken), kräv word boundaries (\y i postgres regex)
             if len(k) <= 3:
                 patterns.append(f"\\y{safe_k}\\y") 
             else:
@@ -162,28 +164,33 @@ def run_sql_keyword_categorization(db, cat_map):
 
     return total_updated
 
-def run_ai_categorization_bulk(db, cat_names, cat_map):
-    genai.configure(api_key=GOOGLE_API_KEY)
+def run_ai_categorization_bulk(db: Session, cat_names: list, cat_map: dict, limit_count: int = None):
+    # NYTT: Initiera Client istället för configure()
+    client = genai.Client(api_key=GOOGLE_API_KEY)
     
-    # Optimering: Använd JSON Schema för garanterad struktur
-    generation_config = {
-        "response_mime_type": "application/json",
-    }
-    
-    model = genai.GenerativeModel(
-        GOOGLE_AI_MODEL,
-        generation_config=generation_config
+    # NYTT: Konfigurations-objekt för det nya SDK:t
+    generate_config = types.GenerateContentConfig(
+        response_mime_type="application/json"
     )
     
-    # Optimering: Större batch för Flash-modeller (sparar nätverksanrop)
-    BATCH_SIZE = 100 
+    BATCH_SIZE = 50 
     backoff_time = 30
+    processed_count = 0
     
     while True:
-        # Optimering: Hämta BARA id och namn (Lean loading)
+        if limit_count and processed_count >= limit_count:
+            break
+            
+        current_limit = BATCH_SIZE
+        if limit_count:
+            remaining = limit_count - processed_count
+            if remaining < BATCH_SIZE:
+                current_limit = remaining
+
+        # Hämta BARA id och namn (Lean loading)
         batch = db.query(Product.id, Product.name)\
             .filter(Product.category_id == None)\
-            .limit(BATCH_SIZE)\
+            .limit(current_limit)\
             .all()
         
         if not batch:
@@ -191,29 +198,32 @@ def run_ai_categorization_bulk(db, cat_names, cat_map):
             
         print(f"   🔄 AI Batch: Bearbetar {len(batch)} produkter...")
         
-        # Bygg minimal prompt
         product_list_str = json.dumps([{"id": p.id, "name": p.name} for p in batch], ensure_ascii=False)
         categories_str = ", ".join(cat_names)
         
         prompt = f"""
-        Uppgift: Kategorisera produkterna till EXAKT en av dessa kategorier: {categories_str}.
+        Uppgift: Kategorisera dessa produkter till EXAKT en av dessa kategorier: {categories_str}.
         
         Regler:
-        1. "Men"/"Man" i namn -> 'Manligt' (men om det är kläder, välj 'Herrkläder').
-        2. Doft/Parfym -> 'Parfym'.
+        1. Försök vara specifik.
+        2. Om helt omöjligt att avgöra, hoppa över produkten.
         
         Returnera en JSON-lista: [{{ "id": 123, "category": "Kategorinamn" }}]
         
-        Data:
+        Produkter:
         {product_list_str}
         """
 
         try:
-            response = model.generate_content(prompt)
-            # Eftersom vi tvingar JSON behöver vi inte städa svaret lika aggressivt
+            # NYTT: Anrop med nya SDK-syntaxen
+            response = client.models.generate_content(
+                model=GOOGLE_AI_MODEL,
+                contents=prompt,
+                config=generate_config
+            )
+            
             matches = json.loads(response.text)
             
-            # Optimering: Bulk Update (istället för row-by-row)
             mappings = []
             for match in matches:
                 pid = match.get("id")
@@ -228,23 +238,19 @@ def run_ai_categorization_bulk(db, cat_names, cat_map):
             if mappings:
                 db.bulk_update_mappings(Product, mappings)
                 db.commit()
-                print(f"      ✅ AI kategoriserade {len(mappings)} st (Bulk Update).")
+                print(f"      ✅ AI lyckades kategorisera {len(mappings)} av {len(batch)}.")
             
-            backoff_time = 30
-            # Kort paus för att inte överbelasta, men kortare än förut tack vare större batch
+            processed_count += len(batch)
             time.sleep(1) 
 
         except Exception as e:
             err_msg = str(e)
-            print(f"      ❌ Fel: {e}")
-            if "429" in err_msg or "Quota" in err_msg:
+            print(f"      ❌ Fel i batch: {e}")
+            # Enkel backoff-logik för rate limits
+            if "429" in err_msg or "Quota" in err_msg or "ResourceExhausted" in err_msg:
                 print(f"      🛑 QUOTA EXCEEDED! Pausar {backoff_time}s...")
                 time.sleep(backoff_time)
-                backoff_time = min(backoff_time * 2, 300)
+                backoff_time = min(backoff_time * 2, 60)
             else:
-                print("      ⚠️ Hoppar över batch pga okänt fel (försöker nästa).")
-                # I verkligheten kanske vi vill logga dessa IDn till en fil
-                continue
-
-if __name__ == "__main__":
-    assign_categories_optimized()
+                print("      ⚠️ Hoppar över batch pga okänt fel.")
+                break

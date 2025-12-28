@@ -1,27 +1,63 @@
---- System ---
-
+# --- Generellt / OS ---
 .DS_Store
 Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
 
---- Python (Backend) ---
-
-pycache/
-*.py[cod]
-venv/
+# --- Miljövariabler & Hemligheter (VIKTIGT!) ---
 .env
+.env.*
+!.env.example
+!.env.test
+backend/.env
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
 
---- Node.js (Frontend) ---
+# --- Python (Backend) ---
+__pycache__/
+*.py[cod]
+*$py.class
+# Virtuella miljöer
+venv/
+.venv/
+env/
+# Tester & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+# Databaser (Lokala filer)
+*.db
+*.sqlite3
+backend/my_database.db
+backend/instance
 
+# --- Node / Next.js (Frontend) ---
 node_modules/
-.next/
-out/
-build/
-.env.local
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+# Next.js build-filer
+.next/
+out/
+build/
+dist/
+# TypeScript
+*.tsbuildinfo
 
---- IDE ---
+# --- Docker ---
+# Ignorera inte docker-compose.yml, men ignorera eventuella overrides om du använder det
+docker-compose.override.ym
 
-.vscode/
-.idea/
+# --- Data & Loggar ---
+logs/
+*.log
+# Om du har stora CSV-filer som du laddar ner (feeds), ignorera dem
+# men behåll dina mock-filer
+backend/feed_*.csv
+!backend/mock_*.csv
+!backend/test_*.csv

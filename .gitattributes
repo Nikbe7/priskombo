@@ -1,0 +1,8 @@
+# Tvinga alltid LF (Linux-style) på shell-script, annars kraschar Docker
+*.sh text eol=lf
+
+# Tvinga LF på Python-filer också för att vara konsekvent
+*.py text eol=lf
+
+# Låt Git hantera resten automatiskt
+* text=auto
