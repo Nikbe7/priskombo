@@ -34,7 +34,7 @@ class BasketRequest(BaseModel):
 def read_root():
     return {"message": "API is running"}
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 def health_check():
     return {"status": "ok", "message": "I am awake!"}
 
