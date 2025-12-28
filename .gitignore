@@ -34,6 +34,7 @@ htmlcov/
 *.csv
 *.sqlite3
 backend/my_database.db
+backend/mock_products.csv
 backend/instance
 
 # --- Node / Next.js (Frontend) ---
