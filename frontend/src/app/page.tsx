@@ -3,7 +3,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link"; 
 import { useRouter } from "next/navigation"; 
 import API_URL from "@/lib/config";
-import { useCart } from "@/context/CartContext"; 
+import { useCart } from "@/context/CartContext";
+import ProductImage from "@/components/ProductImage"; // <--- NY IMPORT
 
 // Typer
 type Category = { 
@@ -18,6 +19,7 @@ type Product = {
   id: number; name: string; ean: string; image_url: string | null; 
   prices: { price: number; store: string; url: string }[] 
 };
+
 type Deal = {
   id: number; name: string; image_url: string | null; price: number; regular_price: number; store: string; discount_percent: number; url: string;
 };
@@ -138,8 +140,8 @@ export default function Home() {
                             {!isComingSoon && (
                                 <div 
                                     className="absolute inset-x-0 top-full mt-1 bg-white/95 backdrop-blur-md rounded-xl shadow-xl border border-blue-100 z-50 flex flex-col 
-                                               opacity-0 invisible peer-hover:opacity-100 peer-hover:visible hover:opacity-100 hover:visible 
-                                               transition-all duration-200 origin-top transform scale-95 peer-hover:scale-100 hover:scale-100"
+                                                opacity-0 invisible peer-hover:opacity-100 peer-hover:visible hover:opacity-100 hover:visible 
+                                                transition-all duration-200 origin-top transform scale-95 peer-hover:scale-100 hover:scale-100"
                                     onClick={(e) => e.stopPropagation()} 
                                 >
                                     <div 
@@ -185,8 +187,14 @@ export default function Home() {
                     <div key={deal.id} className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-lg transition-all duration-300 group relative">
                         <div className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm z-10">-{deal.discount_percent}%</div>
                         <Link href={`/product/${deal.id}`} className="block">
-                            <div className="h-32 bg-slate-50 flex items-center justify-center p-4">
-                                {deal.image_url ? <img src={deal.image_url} alt="" className="max-h-full object-contain mix-blend-multiply group-hover:scale-105 transition duration-500"/> : <span className="text-3xl">🎁</span>}
+                            {/* NYTT: Använder ProductImage och relative container */}
+                            <div className="h-32 bg-slate-50 relative flex items-center justify-center p-4">
+                                <ProductImage 
+                                    src={deal.image_url} 
+                                    alt={deal.name}
+                                    fill
+                                    className="object-contain mix-blend-multiply group-hover:scale-105 transition duration-500"
+                                />
                             </div>
                         </Link>
                         <div className="p-4">
@@ -211,8 +219,14 @@ export default function Home() {
             <h2 className="text-xl font-bold text-slate-700 mb-4">Sökresultat</h2>
             {searchResults.map((p) => (
               <div key={p.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex gap-5 items-center hover:shadow-md transition group">
-                <Link href={`/product/${p.id}`} className="w-16 h-16 bg-slate-50 rounded-lg flex items-center justify-center p-2 flex-shrink-0">
-                  {p.image_url ? <img src={p.image_url} alt="" className="w-full h-full object-contain mix-blend-multiply group-hover:scale-105 transition" /> : "📷"}
+                <Link href={`/product/${p.id}`} className="w-16 h-16 bg-slate-50 rounded-lg relative flex-shrink-0">
+                  {/* NYTT: Använder ProductImage */}
+                  <ProductImage 
+                    src={p.image_url} 
+                    alt={p.name}
+                    fill
+                    className="object-contain mix-blend-multiply p-2 group-hover:scale-105 transition"
+                  />
                 </Link>
                 <div className="flex-1 min-w-0">
                   <Link href={`/product/${p.id}`} className="block">
