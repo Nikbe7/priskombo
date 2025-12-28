@@ -1,7 +1,6 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
-# Vi behöver inte längre JSONResponse för headers
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload, joinedload
 from sqlalchemy import or_, desc, asc, func
 
 from app.database import get_db
@@ -23,7 +22,14 @@ def get_products(
     Hämta produkter med paginering och sortering.
     Returnerar ett objekt: { "data": [produkter], "total": int }
     """
-    query = db.query(Product)
+    
+    # Vi säger till databasen: "När du hämtar produkter, hämta också deras priser 
+    # och vilken butik priset tillhör direkt."
+    # selectinload = Bra för listor (en produkt har många priser)
+    # joinedload = Bra för enskilda relationer (ett pris har en butik)
+    query = db.query(Product).options(
+        selectinload(Product.prices).joinedload(ProductPrice.store)
+    )
 
     # 1. Filtrera på kategori
     if category_ids:
@@ -37,10 +43,13 @@ def get_products(
         query = query.filter(Product.name.ilike(search_filter))
 
     # --- RÄKNA TOTALEN ---
+    # Obs: count() kan vara långsamt på enorma tabeller, men ok här.
+    # För exakt count måste vi köra detta innan vi lägger på options/limits
     total_count = query.count()
 
     # 3. Sortering
     if sort == "price_asc" or sort == "price_desc":
+        # För att sortera på pris måste vi joina tabellerna
         query = query.outerjoin(ProductPrice).group_by(Product.id)
         if sort == "price_asc":
             query = query.order_by(func.min(ProductPrice.price).asc())
@@ -65,18 +74,19 @@ def get_products(
     # 5. Formatera output
     results = []
     for p in products:
-        prices = db.query(ProductPrice, Store)\
-            .join(Store)\
-            .filter(ProductPrice.product_id == p.id)\
-            .all()
-        
         price_list = []
-        for price, store in prices:
-            price_list.append({
-                "store": store.name,
-                "price": price.price,
-                "url": price.url
-            })
+        # p.prices är redan ifylld tack vare selectinload
+        for price in p.prices:
+            # price.store är redan ifylld tack vare joinedload
+            if price.store:
+                price_list.append({
+                    "store": price.store.name,
+                    "price": price.price,
+                    "url": price.url
+                })
+
+        # Sortera prislistan i Python istället för DB (snabbare när datan är hämtad)
+        price_list.sort(key=lambda x: x['price'])
 
         rating = getattr(p, "rating", 0) 
 
@@ -90,7 +100,6 @@ def get_products(
             "prices": price_list
         })
 
-    # Returnera standard JSON-objekt med data och total
     return {
         "data": results,
         "total": total_count
@@ -98,7 +107,10 @@ def get_products(
 
 @router.get("/{product_id}")
 def get_product_details(product_id: int, db: Session = Depends(get_db)):
-    product = db.query(Product).filter(Product.id == product_id).first()
+    product = db.query(Product).options(
+        selectinload(Product.prices).joinedload(ProductPrice.store)
+    ).filter(Product.id == product_id).first()
+
     if not product:
         raise HTTPException(status_code=404, detail="Produkten hittades inte")
 
@@ -109,24 +121,22 @@ def get_product_details(product_id: int, db: Session = Depends(get_db)):
         if cat:
             category_name = cat.name
 
-    # Hämta priser
-    prices = db.query(ProductPrice, Store)\
-        .join(Store)\
-        .filter(ProductPrice.product_id == product.id)\
-        .order_by(ProductPrice.price.asc())\
-        .all()
-
+    # Formatera priser från relationen
     price_list = []
-    for price, store in prices:
-        price_list.append({
-            "store": store.name,
-            "price": price.price,
-            "regular_price": price.regular_price, 
-            "discount_percent": price.discount_percent,
-            "url": price.url,
-            "in_stock": True,
-            "shipping": store.base_shipping
-        })
+    for price in product.prices:
+        if price.store:
+            price_list.append({
+                "store": price.store.name,
+                "price": price.price,
+                "regular_price": price.regular_price, 
+                "discount_percent": price.discount_percent,
+                "url": price.url,
+                "in_stock": True,
+                "shipping": price.store.base_shipping
+            })
+    
+    # Sortera billigast först
+    price_list.sort(key=lambda x: x['price'])
 
     return {
         "id": product.id,

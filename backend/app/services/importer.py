@@ -2,6 +2,7 @@ import pandas as pd
 from sqlalchemy.orm import Session
 from app.models import Product, ProductPrice, Store
 from datetime import datetime
+import math
 
 def import_csv_feed(file_path: str, store_name: str, db: Session):
     print(f"🚀 Startar import för {store_name}...")
@@ -10,71 +11,104 @@ def import_csv_feed(file_path: str, store_name: str, db: Session):
     store = db.query(Store).filter(Store.name == store_name).first()
     if not store:
         print(f"Skapar ny butik: {store_name}")
-        # Här sätter vi default fraktregler, du får ändra dessa manuellt i DB sen
         store = Store(name=store_name, base_shipping=49, free_shipping_limit=499)
         db.add(store)
         db.commit()
         db.refresh(store)
 
-    # 2. Läs filen (Pandas är supersnabbt)
-    # OBS: I verkligheten varierar formatet (sep=';' eller ',')
+    # 2. Förbered Chunking (Läser filen bit för bit)
+    CHUNK_SIZE = 1000
+    total_processed = 0
+    
+    # Bestäm separator (enkel logik, läser första raden)
     try:
-        df = pd.read_csv(file_path, sep=';', dtype={'EAN': str})
+        with open(file_path, 'r', encoding='utf-8') as f:
+            first_line = f.readline()
+            sep = ';' if ';' in first_line else ','
     except:
-        # Testa med komma om semikolon misslyckas
-        df = pd.read_csv(file_path, sep=',', dtype={'EAN': str})
+        sep = ','
 
-    # Rensa data (ta bort rader utan EAN eller Pris)
-    df = df.dropna(subset=['EAN', 'Pris'])
-    
-    count_new = 0
-    count_updated = 0
+    # 3. Skapa en iterator som läser filen i chunks
+    csv_iterator = pd.read_csv(
+        file_path, 
+        sep=sep, 
+        dtype={'EAN': str}, 
+        chunksize=CHUNK_SIZE
+    )
 
-    # 3. Loopa igenom och uppdatera
-    # För prestanda: Hämta alla existerande EANs i minnet först
-    existing_products = {p.ean: p for p in db.query(Product).all()}
-    
-    for index, row in df.iterrows():
-        ean = str(row['EAN']).strip()
-        name = row['Produktnamn']
-        price = float(str(row['Pris']).replace(',', '.')) # Fixa "99,50" till 99.50
-        url = row['Länk']
-        image = row.get('Bildlänk', None) # Om det finns bild i filen
-
-        # A. Hantera PRODUKTEN (Master)
-        product = existing_products.get(ean)
+    for chunk_index, df in enumerate(csv_iterator):
+        # Rensa data i denna chunk
+        df = df.dropna(subset=['EAN', 'Pris'])
         
-        if not product:
-            # Skapa ny
-            product = Product(ean=ean, name=name, image_url=image)
-            db.add(product)
-            db.flush() # Få ett ID utan att committa allt än
-            existing_products[ean] = product # Lägg till i vårt lokala minne
-            count_new += 1
+        # Hämta EANs BARA för denna chunk
+        eans_in_chunk = [str(e).strip() for e in df['EAN'].tolist()]
         
-        # B. Hantera PRISET (Relationen)
-        # Kolla om vi redan har ett pris för denna produkt + butik
-        price_entry = db.query(ProductPrice).filter(
-            ProductPrice.product_id == product.id,
-            ProductPrice.store_id == store.id
-        ).first()
+        # Hämta existerande produkter från DB som matchar EANs i denna chunk
+        # (Mycket snällare mot RAM-minnet)
+        existing_products_query = db.query(Product).filter(Product.ean.in_(eans_in_chunk)).all()
+        existing_products_map = {p.ean: p for p in existing_products_query}
+        
+        for index, row in df.iterrows():
+            ean = str(row['EAN']).strip()
+            name = row['Produktnamn']
+            
+            # Hantera priser (komma till punkt)
+            try:
+                raw_price = str(row['Pris']).replace(',', '.').replace(' ', '')
+                price = float(raw_price)
+            except ValueError:
+                continue # Hoppa över om priset är trasigt
 
-        if price_entry:
-            # Uppdatera pris
-            price_entry.price = price
-            price_entry.url = url
-            price_entry.updated_at = datetime.now()
-            count_updated += 1
-        else:
-            # Skapa nytt pris
-            new_price = ProductPrice(
-                product_id=product.id,
-                store_id=store.id,
-                price=price,
-                url=url
-            )
-            db.add(new_price)
-            count_updated += 1
+            url = row['Länk']
+            image = row.get('Bildlänk', None)
+            
+            # Om bilden är NaN (Not a Number/tom i pandas), sätt till None
+            if pd.isna(image):
+                image = None
 
-    db.commit()
-    print(f"✅ Klar! {count_new} nya produkter, {count_updated} priser uppdaterade.")
+            # A. Hantera PRODUKTEN
+            product = existing_products_map.get(ean)
+            
+            if not product:
+                # Skapa slug (enkel variant)
+                slug = name.lower().replace(" ", "-").replace("å","a").replace("ä","a").replace("ö","o")
+                # Rensa konstiga tecken från slug
+                slug = "".join([c for c in slug if c.isalnum() or c == "-"])
+
+                product = Product(ean=ean, name=name, image_url=image, slug=slug)
+                db.add(product)
+                db.flush() # Ger oss ett ID direkt
+                existing_products_map[ean] = product # Uppdatera map för dubbletter i samma chunk
+            else:
+                # Uppdatera bild om den saknas sedan tidigare
+                if image and not product.image_url:
+                    product.image_url = image
+
+            # B. Hantera PRISET
+            # Vi måste kolla om priset finns. 
+            # (För optimal prestanda borde vi även ladda in priser i bulk, 
+            # men detta är bra nog för nu)
+            price_entry = db.query(ProductPrice).filter(
+                ProductPrice.product_id == product.id,
+                ProductPrice.store_id == store.id
+            ).first()
+
+            if price_entry:
+                price_entry.price = price
+                price_entry.url = url
+                price_entry.updated_at = datetime.now()
+            else:
+                new_price = ProductPrice(
+                    product_id=product.id,
+                    store_id=store.id,
+                    price=price,
+                    url=url
+                )
+                db.add(new_price)
+
+        # Commit efter varje chunk (sparar minne och transaktionslogg)
+        db.commit()
+        total_processed += len(df)
+        print(f"   Processed chunk {chunk_index + 1} ({total_processed} items total)...")
+
+    print(f"✅ Klar! Totalt bearbetat: {total_processed} rader.")
