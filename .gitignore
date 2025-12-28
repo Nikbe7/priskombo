@@ -31,6 +31,7 @@ env/
 htmlcov/
 # Databaser (Lokala filer)
 *.db
+*.csv
 *.sqlite3
 backend/my_database.db
 backend/instance
