@@ -1,6 +1,7 @@
 import click
 import os
 import sys
+import subprocess
 from dotenv import load_dotenv
 
 # Ladda miljövariabler
@@ -53,10 +54,6 @@ def init_db():
 def reset_db(force):
     """
     🧨 NOLLSTÄLL DATABASEN (Tar bort ALLT och skapar nytt).
-    
-    1. Droppar alla tabeller.
-    2. Skapar nya tabeller.
-    3. Kör 'seed' för att lägga in kategorier.
     """
     is_prod = check_prod_environment()
     
@@ -70,6 +67,19 @@ def reset_db(force):
     
     click.secho("🔨 Skapar nya tabeller...", fg="yellow")
     Base.metadata.create_all(bind=engine)
+    
+    # NYTT: Stämpla databasen så att Alembic inte försöker skapa tabellerna igen
+    click.secho("🏷️  Stämplar databasen för Alembic...", fg="cyan")
+    try:
+        # Vi antar att alembic.ini ligger i 'backend/'-mappen
+        if os.path.exists("backend/alembic.ini"):
+            subprocess.run(["alembic", "stamp", "head"], cwd="backend", check=True)
+        elif os.path.exists("alembic.ini"):
+            subprocess.run(["alembic", "stamp", "head"], check=True)
+        else:
+            click.secho("⚠️ Kunde inte hitta alembic.ini - kör 'alembic stamp head' manuellt.", fg="red")
+    except Exception as e:
+        click.secho(f"⚠️ Kunde inte stämpla databasen: {e}", fg="red")
     
     click.secho("🌱 Lägger in grundkategorier...", fg="yellow")
     db = get_db()
