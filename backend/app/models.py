@@ -21,8 +21,9 @@ class Product(Base):
     __tablename__ = "products"
     id = Column(Integer, primary_key=True, index=True)
     ean = Column(String, unique=True, index=True)
-    name = Column(String)
+    name = Column(String, index=True)
     brand = Column(String, index=True, nullable=True)
+    slug = Column(String, unique=True, index=True)
     image_url = Column(Text, nullable=True)
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
     
