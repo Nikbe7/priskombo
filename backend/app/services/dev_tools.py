@@ -2,15 +2,18 @@ import random
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from app.models import Product, ProductPrice, Store, Category
+from app.logging_config import get_logger
+
+logger = get_logger("dev_tools")
 
 def generate_fake_data(db: Session, amount: int = 50):
     """Genererar testprodukter med märken, butiker och kampanjpriser."""
-    print(f"🧪 Genererar {amount} avancerade fake-produkter...")
+    logger.info(f"🧪 Genererar {amount} avancerade fake-produkter...")
 
     # 1. Hämta löv-kategorier (de längst ner i trädet)
     categories = db.query(Category).filter(Category.parent_id != None).all()
     if not categories:
-        print("❌ Inga underkategorier hittades. Kör 'python manage.py seed' först.")
+        logger.error("❌ Inga underkategorier hittades. Kör 'python manage.py seed' först.")
         return
 
     # 2. Skapa eller hämta butiker
@@ -121,4 +124,4 @@ def generate_fake_data(db: Session, amount: int = 50):
         count += 1
 
     db.commit()
-    print(f"✅ Skapade {count} produkter med märken och priser.")
+    logger.info(f"✅ Skapade {count} produkter med märken och priser.")

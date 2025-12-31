@@ -6,13 +6,16 @@ import google.generativeai as genai
 from sqlalchemy.orm import Session
 from sqlalchemy.dialects.postgresql import insert
 from app.models import Product, ProductPrice, Store
+from app.logging_config import get_logger
+
+logger = get_logger("feed_engine")
 
 # Läs API-nyckel för AI-brand detektion
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 GOOGLE_AI_MODEL = os.getenv("GOOGLE_AI_MODEL", "gemini-2.0-flash")
 
 def process_feed_bulk(file_path: str, store_name: str, db: Session):
-    print(f"🚀 Startar Bulk-import för {store_name}...")
+    logger.info(f"🚀 Startar Bulk-import för {store_name}...")
     
     # 1. Hämta eller skapa Butiken
     store = db.query(Store).filter(Store.name == store_name).first()
@@ -26,7 +29,7 @@ def process_feed_bulk(file_path: str, store_name: str, db: Session):
     try:
         df = pd.read_csv(file_path, sep=None, engine='python', dtype={'EAN': str})
     except Exception as e:
-        print(f"❌ Kunde inte läsa filen: {e}")
+        logger.error(f"❌ Kunde inte läsa filen: {e}")
         return
 
     df.columns = [c.lower() for c in df.columns]
@@ -72,12 +75,12 @@ def process_feed_bulk(file_path: str, store_name: str, db: Session):
     # Vi kör detta för att städa upp gissningarna.
     # T.ex. om gissningen blev "The" (från "The Ordinary"), ska AI fixa det till "The Ordinary".
     if GOOGLE_API_KEY:
-        print("🤖 Kör AI för att tvätta varumärken...")
+        logger.info("🤖 Kör AI för att tvätta varumärken...")
         df = refine_brands_with_ai(df)
     else:
-        print("⚠️ Ingen API-nyckel. Hoppar över AI-tvätt av varumärken.")
+        logger.warning("⚠️ Ingen API-nyckel. Hoppar över AI-tvätt av varumärken.")
 
-    print(f"📥 Bearbetar {len(df)} rader...")
+    logger.info(f"📥 Bearbetar {len(df)} rader...")
 
     # ---------------------------------------------------------
     # FAS 1: UPSERT PRODUKTER (Master Catalog)
@@ -106,7 +109,7 @@ def process_feed_bulk(file_path: str, store_name: str, db: Session):
         db.execute(stmt)
         db.commit()
     
-    print("✅ Produkter synkade.")
+    logger.info("✅ Produkter synkade.")
 
     # ---------------------------------------------------------
     # FAS 2: UPSERT PRISER
@@ -157,7 +160,7 @@ def process_feed_bulk(file_path: str, store_name: str, db: Session):
         db.bulk_insert_mappings(ProductPrice, batch)
         db.commit()
 
-    print(f"✅ Priser uppdaterade för {len(prices_data)} varor.")
+    logger.info(f"✅ Priser uppdaterade för {len(prices_data)} varor.")
 
 def refine_brands_with_ai(df):
     """
@@ -215,15 +218,15 @@ def refine_brands_with_ai(df):
                 time.sleep(1) # Rate limit paus
 
             except Exception as e:
-                print(f"⚠️ AI Brand cleaning error (batch {i}): {e}")
+                logger.warning(f"⚠️ AI Brand cleaning error (batch {i}): {e}")
                 continue
 
         # Applicera rättningarna på dataframen
         if corrections:
-            print(f"✨ AI rättade {len(corrections)} varumärken.")
+            logger.info(f"✨ AI rättade {len(corrections)} varumärken.")
             df['brand'] = df['brand'].map(lambda x: corrections.get(str(x), x))
             
     except Exception as e:
-        print(f"⚠️ Kunde inte köra AI-tvätt: {e}")
+        logger.warning(f"⚠️ Kunde inte köra AI-tvätt: {e}")
     
     return df

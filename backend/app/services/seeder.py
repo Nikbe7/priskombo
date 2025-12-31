@@ -2,6 +2,9 @@ import re
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.models import Category, Product
+from app.logging_config import get_logger
+
+logger = get_logger("seeder")
 
 # Vi behåller listan för att bygga strukturen, men bryr oss inte om "active"-flaggan längre
 CATEGORY_DATA = {
@@ -29,8 +32,9 @@ def make_slug(text: str) -> str:
 
 def seed_categories(db: Session):
     """Skapar grundkategorier (alla sätts till coming_soon=True som default)."""
-    print("🌱 Synkroniserar kategoriträd...")
+    logger.info("🌱 Synkroniserar kategoriträd...")
     
+    count_new = 0
     for cat_name, subs in CATEGORY_DATA.items():
         parent_slug = make_slug(cat_name)
         # Skapa huvudkategori (alltid coming_soon=True tills vi kör update-funktionen)
@@ -39,9 +43,10 @@ def seed_categories(db: Session):
         for sub_name in subs:
             sub_slug = make_slug(sub_name)
             check_or_create(db, sub_name, sub_slug, parent.id)
+            count_new += 1
             
     db.commit()
-    print(f"✅ Kategoristruktur klar.")
+    logger.info("✅ Kategoristruktur klar.")
 
 def check_or_create(db: Session, name: str, slug: str, parent_id: int = None):
     category = db.query(Category).filter(Category.slug == slug).first()
@@ -54,14 +59,14 @@ def check_or_create(db: Session, name: str, slug: str, parent_id: int = None):
         )
         db.add(category)
         db.flush()
-        print(f"   + Skapade: {name}")
+        logger.info(f"   + Skapade: {name}")
     return category
 
 def update_coming_soon_status(db: Session):
     """
     Kollar vilka kategorier som faktiskt har produkter och låser upp dem.
     """
-    print("🔄 Uppdaterar kategori-status baserat på lagersaldo...")
+    logger.info("🔄 Uppdaterar kategori-status baserat på lagersaldo...")
     
     # 1. Återställ allt till TRUE (pessimistisk start)
     db.query(Category).update({Category.coming_soon: True})
@@ -74,7 +79,7 @@ def update_coming_soon_status(db: Session):
     ]
     
     if not active_category_ids:
-        print("   ⚠️ Inga produkter hittades. Alla kategorier är 'Coming Soon'.")
+        logger.warning("   ⚠️ Inga produkter hittades. Alla kategorier är 'Coming Soon'.")
         db.commit()
         return
 
@@ -103,4 +108,4 @@ def update_coming_soon_status(db: Session):
     
     # Räkna hur många som är aktiva nu
     active_count = db.query(Category).filter(Category.coming_soon == False).count()
-    print(f"✅ Status uppdaterad! {active_count} kategorier är nu aktiva (har produkter).")
+    logger.info(f"✅ Status uppdaterad! {active_count} kategorier är nu aktiva (har produkter).")

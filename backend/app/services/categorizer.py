@@ -7,6 +7,9 @@ from google.genai import types
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.models import Product, Category
+from app.logging_config import get_logger
+
+logger = get_logger("categorizer")
 
 # Läs API-nyckel och modell från miljön
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
@@ -19,43 +22,43 @@ def categorize_uncategorized_products(db: Session, limit: int = None):
     # 1. Förberedelser
     categories = db.query(Category.id, Category.name).all()
     if not categories:
-        print("❌ Inga kategorier hittades i databasen.")
+        logger.error("❌ Inga kategorier hittades i databasen.")
         return
     
     cat_names = [c.name for c in categories]
     cat_map = {c.name: c.id for c in categories}
     
     total_uncat = db.query(Product.id).filter(Product.category_id == None).count()
-    print(f"🕵️‍♂️ Hittade totalt {total_uncat} okategoriserade produkter.")
+    logger.info(f"🕵️‍♂️ Hittade totalt {total_uncat} okategoriserade produkter.")
     
     if total_uncat == 0:
-        print("✅ Allt är redan kategoriserat!")
+        logger.info("✅ Allt är redan kategoriserat!")
         return
 
     # ---------------------------------------------------------
     # STEG 1: SQL-BASERAD NYCKELORDSSÖKNING (Gratis & Supersnabb)
     # ---------------------------------------------------------
-    print("\n⚡ STEG 1: Kör SQL-baserad massuppdatering (Regex)...")
+    logger.info("⚡ STEG 1: Kör SQL-baserad massuppdatering (Regex)...")
     keyword_hits = run_sql_keyword_categorization(db, cat_map)
-    print(f"   -> Databasen uppdaterade {keyword_hits} produkter direkt.")
+    logger.info(f"   -> Databasen uppdaterade {keyword_hits} produkter direkt.")
 
     # ---------------------------------------------------------
     # STEG 2: KÖR AI PÅ RESTEN
     # ---------------------------------------------------------
     if not GOOGLE_API_KEY:
-        print("\n⚠️ Ingen GOOGLE_API_KEY. Hoppar över AI-steget.")
+        logger.warning("⚠️ Ingen GOOGLE_API_KEY. Hoppar över AI-steget.")
         return
 
     # Räkna om vad som är kvar
     remaining_count = db.query(Product.id).filter(Product.category_id == None).count()
     
     if remaining_count > 0:
-        print(f"\n🤖 STEG 2: Kör AI ({GOOGLE_AI_MODEL}) på återstående produkter...")
+        logger.info(f"🤖 STEG 2: Kör AI ({GOOGLE_AI_MODEL}) på återstående produkter...")
         run_ai_categorization_bulk(db, cat_names, cat_map, limit_count=limit)
     else:
-        print("✨ Inget kvar för AI att göra efter Regex-steget!")
+        logger.info("✨ Inget kvar för AI att göra efter Regex-steget!")
 
-    print("\n✅ Kategorisering klar.")
+    logger.info("✅ Kategorisering klar.")
 
 def run_sql_keyword_categorization(db: Session, cat_map: dict):
     """
@@ -195,7 +198,7 @@ def run_ai_categorization_bulk(db: Session, cat_names: list, cat_map: dict, limi
         if not batch:
             break
             
-        print(f"   🔄 AI Batch: Bearbetar {len(batch)} produkter...")
+        logger.info(f"   🔄 AI Batch: Bearbetar {len(batch)} produkter...")
         
         product_list_str = json.dumps([{"id": p.id, "name": p.name} for p in batch], ensure_ascii=False)
         categories_str = ", ".join(cat_names)
@@ -237,19 +240,19 @@ def run_ai_categorization_bulk(db: Session, cat_names: list, cat_map: dict, limi
             if mappings:
                 db.bulk_update_mappings(Product, mappings)
                 db.commit()
-                print(f"      ✅ AI lyckades kategorisera {len(mappings)} av {len(batch)}.")
+                logger.info(f"      ✅ AI lyckades kategorisera {len(mappings)} av {len(batch)}.")
             
             processed_count += len(batch)
             time.sleep(1) 
 
         except Exception as e:
             err_msg = str(e)
-            print(f"      ❌ Fel i batch: {e}")
+            logger.error(f"      ❌ Fel i batch: {e}")
             # Enkel backoff-logik för rate limits
             if "429" in err_msg or "Quota" in err_msg or "ResourceExhausted" in err_msg:
-                print(f"      🛑 QUOTA EXCEEDED! Pausar {backoff_time}s...")
+                logger.warning(f"      🛑 QUOTA EXCEEDED! Pausar {backoff_time}s...")
                 time.sleep(backoff_time)
                 backoff_time = min(backoff_time * 2, 60)
             else:
-                print("      ⚠️ Hoppar över batch pga okänt fel.")
+                logger.warning("      ⚠️ Hoppar över batch pga okänt fel.")
                 break

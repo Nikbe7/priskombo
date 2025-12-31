@@ -5,6 +5,9 @@ from apscheduler.triggers.cron import CronTrigger
 from app.database import SessionLocal
 from app.services.importer import import_csv_feed
 from app.services.seeder import update_coming_soon_status
+from app.logging_config import get_logger
+
+logger = get_logger("scheduler")
 
 # Här listar du dina framtida feeds
 FEED_CONFIG = [
@@ -26,7 +29,7 @@ def download_and_import_job():
     2. Kör din import-funktion.
     3. Raderar filen.
     """
-    print("⏰ SCHEDULER: Startar nattlig uppdatering...")
+    logger.info("⏰ SCHEDULER: Startar nattlig uppdatering...")
     db = SessionLocal()
     
     try:
@@ -35,10 +38,10 @@ def download_and_import_job():
             url = feed["url"]
 
             if not url:
-                print(f"   ⚠️ Hoppar över {store_name} (Ingen URL konfigurerad)")
+                logger.warning(f"   ⚠️ Hoppar över {store_name} (Ingen URL konfigurerad)")
                 continue
 
-            print(f"   ⬇️ Laddar ner feed för {store_name}...")
+            logger.info(f"   ⬇️ Laddar ner feed för {store_name}...")
             
             # Spara filen temporärt i /tmp (Linux standard temp-mapp)
             tmp_file = f"/tmp/feed_{store_name}.csv"
@@ -55,15 +58,17 @@ def download_and_import_job():
                 import_csv_feed(tmp_file, store_name, db)
                 
             except Exception as e:
-                print(f"   ❌ Misslyckades med {store_name}: {e}")
+                logger.error(f"❌ Misslyckades med {store_name}: {e}")
             finally:
                 # Städa upp (ta bort filen)
                 if os.path.exists(tmp_file):
                     os.remove(tmp_file)
+                    logger.debug(f"🧹 Tog bort tempfil {tmp_file}")
 
         # Uppdatera status (Coming soon -> Active) efter importen
+        logger.info("🔄 Uppdaterar 'Coming Soon' status...")
         update_coming_soon_status(db)
-        print("✅ SCHEDULER: Nattlig uppdatering klar.")
+        logger.info("✅ SCHEDULER: Nattlig uppdatering klar.")
 
     finally:
         db.close()
@@ -72,7 +77,7 @@ def download_and_import_job():
 scheduler = AsyncIOScheduler()
 
 def start_scheduler():
-    # Lägg till jobbet: Körs varje natt kl 03:00
+    # Kör kl 03:00 varje natt
     scheduler.add_job(
         download_and_import_job,
         trigger=CronTrigger(hour=3, minute=0), # Kl 03:00
@@ -81,4 +86,4 @@ def start_scheduler():
     )
     
     scheduler.start()
-    print("🕒 Scheduler startad: Import schemalagd till 03:00.")
+    logger.info("🕒 Scheduler startad: Import schemalagd till 03:00.")

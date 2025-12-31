@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List
+from app.logging_config import setup_logging, get_logger
 
 # Databas och Modeller
 from app.database import get_db
@@ -15,6 +16,21 @@ from app.services.scheduler import start_scheduler, scheduler, download_and_impo
 
 # Routers
 from api.v1.endpoints import categories, products, deals
+
+# Initiera loggning direkt
+setup_logging()
+logger = get_logger("main") # <--- Skapa en logger för main-filen
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("🚀 Servern startar upp...") # <--- Använd loggern
+    start_scheduler()
+    yield
+    logger.info("🛑 Servern stänger ner...")
+    try:
+        scheduler.shutdown()
+    except Exception as e:
+        logger.warning(f"Kunde inte stänga scheduler snyggt: {e}")
 
 # --- LIFESPAN (Hanterar uppstart och nedstängning) ---
 @asynccontextmanager
