@@ -4,8 +4,15 @@ import sys
 import subprocess
 from dotenv import load_dotenv
 
+# 1. NYTT: Importera loggning
+from app.logging_config import setup_logging, get_logger
+
 # Ladda miljövariabler
 load_dotenv()
+
+# 2. NYTT: Initiera loggning
+setup_logging()
+logger = get_logger("manage")
 
 try:
     from app.database import SessionLocal, engine, Base
@@ -15,9 +22,9 @@ try:
     from app.services.categorizer import categorize_uncategorized_products
     from app.models import Product, ProductPrice, Store, Category # Behövs för att tabeller ska hittas
 except ImportError as e:
-    print("❌ Kritiskt fel: Kunde inte importera backend-moduler.")
-    print(f"   Se till att du står i roten av projektet.")
-    print(f"   Fel: {e}")
+    logger.error("❌ Kritiskt fel: Kunde inte importera backend-moduler.")
+    logger.error(f"   Se till att du står i roten av projektet.")
+    logger.error(f"   Fel: {e}")
     sys.exit(1)
 
 # --- Helpers ---
@@ -28,7 +35,7 @@ def check_prod_environment():
     """Kollar om vi kör mot en skarp databas och varnar."""
     db_url = os.getenv("DATABASE_URL", "")
     if "supabase" in db_url and "localhost" not in db_url:
-        click.secho("\n⚠️  VARNING: DU ÄR UPPKOPPLAD MOT PRODUKTIONSDATABASEN (SUPABASE)! ⚠️", fg="red", bold=True)
+        logger.warning("⚠️  VARNING: DU ÄR UPPKOPPLAD MOT PRODUKTIONSDATABASEN (SUPABASE)! ⚠️")
         return True
     return False
 
@@ -45,9 +52,9 @@ def cli():
 @cli.command()
 def init_db():
     """Skapar tabeller (om de inte finns)."""
-    click.echo("🔨 Skapar databastabeller...")
+    logger.info("🔨 Skapar databastabeller...")
     Base.metadata.create_all(bind=engine)
-    click.secho("✅ Klart!", fg="green")
+    logger.info("✅ Klart!")
 
 @cli.command()
 @click.option('--force', is_flag=True, help="Hoppa över bekräftelse")
@@ -58,18 +65,19 @@ def reset_db(force):
     is_prod = check_prod_environment()
     
     if is_prod and not force:
+        # Vi använder click.confirm här för att pausa exekveringen och kräva svar
         click.confirm("Är du HELT SÄKER på att du vill radera all data i PRODUKTION?", abort=True)
     elif not force:
         click.confirm("Detta raderar ALL data i databasen (lokalt). Är du säker?", abort=True)
 
-    click.secho("🗑️  Raderar alla tabeller...", fg="yellow")
+    logger.warning("🗑️  Raderar alla tabeller...")
     Base.metadata.drop_all(bind=engine)
     
-    click.secho("🔨 Skapar nya tabeller...", fg="yellow")
+    logger.info("🔨 Skapar nya tabeller...")
     Base.metadata.create_all(bind=engine)
     
-    # NYTT: Stämpla databasen så att Alembic inte försöker skapa tabellerna igen
-    click.secho("🏷️  Stämplar databasen för Alembic...", fg="cyan")
+    # Stämpla databasen så att Alembic inte försöker skapa tabellerna igen
+    logger.info("🏷️  Stämplar databasen för Alembic...")
     try:
         # Vi antar att alembic.ini ligger i 'backend/'-mappen
         if os.path.exists("backend/alembic.ini"):
@@ -77,18 +85,18 @@ def reset_db(force):
         elif os.path.exists("alembic.ini"):
             subprocess.run(["alembic", "stamp", "head"], check=True)
         else:
-            click.secho("⚠️ Kunde inte hitta alembic.ini - kör 'alembic stamp head' manuellt.", fg="red")
+            logger.warning("⚠️ Kunde inte hitta alembic.ini - kör 'alembic stamp head' manuellt.")
     except Exception as e:
-        click.secho(f"⚠️ Kunde inte stämpla databasen: {e}", fg="red")
+        logger.error(f"⚠️ Kunde inte stämpla databasen: {e}")
     
-    click.secho("🌱 Lägger in grundkategorier...", fg="yellow")
+    logger.info("🌱 Lägger in grundkategorier...")
     db = get_db()
     try:
         seed_categories(db)
     finally:
         db.close()
 
-    click.secho("✨ Databasen är helt återställd och redo!", fg="green", bold=True)
+    logger.info("✨ Databasen är helt återställd och redo!")
 
 @cli.command()
 def seed():
@@ -97,7 +105,7 @@ def seed():
     try:
         seed_categories(db)
         update_coming_soon_status(db)
-        click.secho("✅ Kategorier synkroniserade.", fg="green")
+        logger.info("✅ Kategorier synkroniserade.")
     finally:
         db.close()
 
@@ -112,7 +120,7 @@ def fake_data(amount):
     db = get_db()
     try:
         generate_fake_data(db, amount)
-        click.secho(f"✅ Skapade {amount} testprodukter.", fg="green")
+        logger.info(f"✅ Skapade {amount} testprodukter.")
 
         update_coming_soon_status(db)
     finally:
@@ -129,14 +137,14 @@ def import_feed(filename, store):
         if os.path.exists(alt_path):
             filename = alt_path
         else:
-            click.secho(f"❌ Filen '{filename}' hittades inte.", fg="red")
+            logger.error(f"❌ Filen '{filename}' hittades inte.")
             return
 
-    click.echo(f"🚀 Startar import för {store} från {filename}...")
+    logger.info(f"🚀 Startar import för {store} från {filename}...")
     db = get_db()
     try:
         import_csv_feed(filename, store, db)
-        click.secho("✅ Import klar.", fg="green")
+        logger.info("✅ Import klar.")
 
         update_coming_soon_status(db)
     finally:
@@ -149,10 +157,10 @@ def categorize(limit):
     """🤖 AI-kategoriserar produkter som saknar kategori."""
     db = get_db()
     try:
-        click.secho("Startar kategorisering (Regex + AI)...", fg="cyan")
+        logger.info("Startar kategorisering (Regex + AI)...")
         categorize_uncategorized_products(db, limit)
         update_coming_soon_status(db)
-        click.secho("✅ Kategorisering färdig.", fg="green")
+        logger.info("✅ Kategorisering färdig.")
     finally:
         db.close()
 
