@@ -12,6 +12,7 @@ services:
       - GOOGLE_AI_MODEL=${GOOGLE_AI_MODEL}
     depends_on:
       - db
+      - redis
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   db:
@@ -26,6 +27,12 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./db_init/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  redis:
+    image: redis:7-alpine
+    container_name: priskombo-redis
+    ports:
+      - "6379:6379"
 
 volumes:
   postgres_data:

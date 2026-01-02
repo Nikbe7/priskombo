@@ -1,6 +1,9 @@
+from unittest.mock import patch
 from app.services.optimizer import calculate_best_basket
 from app.models import Product, ProductPrice, Store
 
+# Vi patchar bort redis_client så att vi alltid testar logiken, inte cachen
+@patch("app.services.optimizer.redis_client", None) 
 def test_single_store_cheapest(db):
     """Testar att algoritmen väljer billigaste butiken när allt finns där."""
     
@@ -26,10 +29,10 @@ def test_single_store_cheapest(db):
     # 3. Verifiera
     best = results[0] # Listan är sorterad billigast först
     
-    # KORRIGERING: Anpassat efter din nya optimizer.py
     assert best["stores"][0] == "Apotea"
     assert best["total_cost"] == 149.0 # 100 + 49 frakt
 
+@patch("app.services.optimizer.redis_client", None)
 def test_smart_split(db):
     """Testar att algoritmen delar upp köpet om det lönar sig."""
     s1 = Store(name="Store A", base_shipping=50)
