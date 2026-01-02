@@ -5,6 +5,7 @@ from sqlalchemy import or_, desc, asc, func
 
 from app.database import get_db
 from app.models import Product, ProductPrice, Store, Category
+# Vi behöver inte importera schemas här för logiken, men bra för return types om vi vill vara explicita
 
 router = APIRouter()
 
@@ -23,12 +24,10 @@ def get_products(
     Returnerar ett objekt: { "data": [produkter], "total": int }
     """
     
-    # Vi säger till databasen: "När du hämtar produkter, hämta också deras priser 
-    # och vilken butik priset tillhör direkt."
-    # selectinload = Bra för listor (en produkt har många priser)
-    # joinedload = Bra för enskilda relationer (ett pris har en butik)
+    # Vi inkluderar även kategori-objektet här så att produktlistor kan bygga länkar direkt
     query = db.query(Product).options(
-        selectinload(Product.prices).joinedload(ProductPrice.store)
+        selectinload(Product.prices).joinedload(ProductPrice.store),
+        joinedload(Product.category) # <-- NYTT: Ladda kategorin (men kanske inte hela trädet för listor för att spara prestanda)
     )
 
     # 1. Filtrera på kategori
@@ -43,13 +42,10 @@ def get_products(
         query = query.filter(Product.name.ilike(search_filter))
 
     # --- RÄKNA TOTALEN ---
-    # Obs: count() kan vara långsamt på enorma tabeller, men ok här.
-    # För exakt count måste vi köra detta innan vi lägger på options/limits
     total_count = query.count()
 
     # 3. Sortering
     if sort == "price_asc" or sort == "price_desc":
-        # För att sortera på pris måste vi joina tabellerna
         query = query.outerjoin(ProductPrice).group_by(Product.id)
         if sort == "price_asc":
             query = query.order_by(func.min(ProductPrice.price).asc())
@@ -75,9 +71,7 @@ def get_products(
     results = []
     for p in products:
         price_list = []
-        # p.prices är redan ifylld tack vare selectinload
         for price in p.prices:
-            # price.store är redan ifylld tack vare joinedload
             if price.store:
                 price_list.append({
                     "store": price.store.name,
@@ -85,17 +79,26 @@ def get_products(
                     "url": price.url
                 })
 
-        # Sortera prislistan i Python istället för DB (snabbare när datan är hämtad)
         price_list.sort(key=lambda x: x['price'])
-
         rating = getattr(p, "rating", 0) 
+
+        # Bygg kategori-strukturen för listan
+        category_data = None
+        if p.category:
+            category_data = {
+                "name": p.category.name,
+                "slug": p.category.slug,
+                # Vi skippar parent i list-vyn för att hålla responsen lätt
+            }
 
         results.append({
             "id": p.id,
             "name": p.name,
             "ean": p.ean,
+            "slug": p.slug,
             "image_url": p.image_url,
             "category_id": p.category_id,
+            "category": category_data, # <-- Uppdaterat fält
             "rating": rating,
             "prices": price_list
         })
@@ -105,23 +108,30 @@ def get_products(
         "total": total_count
     }
 
-@router.get("/{product_id}")
-def get_product_details(product_id: int, db: Session = Depends(get_db)):
-    product = db.query(Product).options(
-        selectinload(Product.prices).joinedload(ProductPrice.store)
-    ).filter(Product.id == product_id).first()
+@router.get("/{id_or_slug}")
+def get_product_details(id_or_slug: str, db: Session = Depends(get_db)):
+    """
+    Hämtar en enskild produkt baserat på ID eller SLUG.
+    Inkluderar hela kategoriträdet (Kategori -> Parent) för URL-byggande.
+    """
+    
+    # Bygg query med alla relationer vi behöver
+    query = db.query(Product).options(
+        selectinload(Product.prices).joinedload(ProductPrice.store),
+        # Här laddar vi rekursivt: Produkt -> Kategori -> Parent Kategori
+        joinedload(Product.category).joinedload(Category.parent)
+    )
+
+    # Avgör om input är ett ID (siffror) eller en Slug (text)
+    if id_or_slug.isdigit():
+        product = query.filter(Product.id == int(id_or_slug)).first()
+    else:
+        product = query.filter(Product.slug == id_or_slug).first()
 
     if not product:
         raise HTTPException(status_code=404, detail="Produkten hittades inte")
 
-    # Hämta kategori-namn
-    category_name = None
-    if product.category_id:
-        cat = db.query(Category).filter(Category.id == product.category_id).first()
-        if cat:
-            category_name = cat.name
-
-    # Formatera priser från relationen
+    # Formatera priser
     price_list = []
     for price in product.prices:
         if price.store:
@@ -135,14 +145,30 @@ def get_product_details(product_id: int, db: Session = Depends(get_db)):
                 "shipping": price.store.base_shipping
             })
     
-    # Sortera billigast först
     price_list.sort(key=lambda x: x['price'])
+
+    # Bygg kategori-objektet enligt det nya schemat
+    category_data = None
+    if product.category:
+        category_data = {
+            "name": product.category.name,
+            "slug": product.category.slug,
+            "parent": None
+        }
+        # Lägg till parent om det finns
+        if product.category.parent:
+            category_data["parent"] = {
+                "name": product.category.parent.name,
+                "slug": product.category.parent.slug,
+                "parent": None # Stoppar rekursionen här (vi stödjer bara 2 nivåer i URL just nu)
+            }
 
     return {
         "id": product.id,
         "name": product.name,
         "ean": product.ean,
+        "slug": product.slug,
         "image_url": product.image_url,
-        "category": category_name,
+        "category": category_data, # Returnerar objektet nu!
         "prices": price_list
     }

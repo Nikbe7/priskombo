@@ -1,50 +1,51 @@
 "use client";
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useState } from "react";
 import Link from "next/link";
-import API_URL from "@/lib/config";
 import { useCart } from "@/context/CartContext";
+import ProductImage from "@/components/ProductImage"; 
 
-// Uppdaterad typ för att inkludera rea-fält
+// Typer som matchar din nya backend-respons
+type CategoryLink = {
+  name: string;
+  slug: string;
+  parent?: CategoryLink | null;
+};
+
 type ProductDetails = {
   id: number;
   name: string;
   ean: string;
+  slug: string | null;
   image_url: string | null;
-  category: string | null;
+  // Category är nu ett objekt, inte bara en sträng
+  category: CategoryLink | null;
   prices: { 
     store: string; 
     price: number; 
-    regular_price?: number; // Nytt fält
-    discount_percent?: number; // Nytt fält
+    regular_price?: number;
+    discount_percent?: number;
     url: string; 
-    shipping: number;
+    base_shipping: number;
   }[];
 };
 
-export default function ProductPage() {
-  const params = useParams();
+export default function ProductView({ product }: { product: ProductDetails }) {
   const { addToBasket } = useCart();
-  const [product, setProduct] = useState<ProductDetails | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (params.id) {
-      fetch(`${API_URL}/products/${params.id}`)
-        .then((res) => {
-            if (!res.ok) throw new Error("Produkten hittades inte");
-            return res.json();
-        })
-        .then((data) => setProduct(data))
-        .catch((err) => console.error(err))
-        .finally(() => setLoading(false));
-    }
-  }, [params.id]);
-
-  if (loading) return <div className="p-20 text-center text-gray-500 pt-32">Laddar produkt... 🧴</div>;
-  if (!product) return <div className="p-20 text-center text-red-500 pt-32">Produkten hittades inte.</div>;
-
   const bestPrice = product.prices[0]?.price || 0;
+
+  // Enkel funktion för att rendera brödsmulor rekursivt (Parent -> Child)
+  const renderBreadcrumbs = (cat: CategoryLink | null | undefined) => {
+    if (!cat) return null;
+    return (
+      <>
+        {cat.parent && renderBreadcrumbs(cat.parent)}
+        <Link href={`/${cat.slug}`} className="hover:text-blue-600 hover:underline capitalize">
+           {cat.name}
+        </Link>
+        <span className="mx-2 text-gray-400">/</span>
+      </>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-6 md:p-12 font-sans pb-32 pt-24">
@@ -54,11 +55,18 @@ export default function ProductPage() {
           
           {/* BILD */}
           <div className="bg-gray-50 p-10 flex items-center justify-center border-b md:border-b-0 md:border-r border-gray-100 relative">
-             <Link href="/" className="absolute top-4 left-4 text-gray-400 hover:text-gray-600 transition">
+             <Link href="/" className="absolute top-4 left-4 text-gray-400 hover:text-gray-600 transition text-sm font-medium">
                ← Tillbaka
              </Link>
              {product.image_url ? (
-                <img src={product.image_url} alt={product.name} className="max-w-full max-h-80 object-contain mix-blend-multiply hover:scale-105 transition duration-500" />
+                <div className="relative w-full h-80">
+                   {/* Använd vanlig img om du inte vill bråka med Next Image just nu */}
+                   <img 
+                     src={product.image_url} 
+                     alt={product.name} 
+                     className="w-full h-full object-contain mix-blend-multiply" 
+                   />
+                </div>
              ) : (
                 <span className="text-6xl">📦</span>
              )}
@@ -66,7 +74,14 @@ export default function ProductPage() {
 
           {/* INFO */}
           <div className="p-8 md:p-12 flex flex-col justify-center">
-            <div className="text-sm font-bold text-blue-600 uppercase tracking-wider mb-2">{product.category || "Okategoriserad"}</div>
+            
+            {/* Brödsmulor (Breadcrumbs) */}
+            <div className="text-xs text-gray-500 mb-4 flex flex-wrap items-center">
+                <Link href="/" className="hover:text-blue-600 hover:underline">Start</Link>
+                <span className="mx-2 text-gray-400">/</span>
+                {product.category ? renderBreadcrumbs(product.category) : <span>Okategoriserad</span>}
+            </div>
+
             <h1 className="text-3xl font-extrabold text-gray-900 mb-4 leading-tight">{product.name}</h1>
             
             <div className="flex items-center gap-4 mb-8">
@@ -103,7 +118,7 @@ export default function ProductPage() {
                   <span className="font-bold text-gray-700">{offer.store}</span>
                   {idx === 0 && <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded font-bold">Billigast</span>}
                   
-                  {/* NYTT: Visa rea-etikett */}
+                  {/* Rea-etikett */}
                   {offer.discount_percent && offer.discount_percent > 0 ? (
                     <span className="bg-red-100 text-red-600 text-xs px-2 py-1 rounded font-bold animate-pulse">
                       -{offer.discount_percent}%
@@ -115,15 +130,17 @@ export default function ProductPage() {
                   <div className="text-right">
                     <div className="font-bold text-lg text-gray-900">{offer.price} kr</div>
                     
-                    {/* Visa ordinarie pris överstruket om det finns */}
                     {offer.regular_price && offer.regular_price > offer.price && (
                       <div className="text-xs text-gray-400 line-through">
                         {offer.regular_price} kr
                       </div>
                     )}
 
-                    {/* Visa fraktpriset alltid, oavsett om det är rea eller inte */}
-                    <div className="text-xs text-gray-400">Frakt: {offer.shipping} kr</div>
+                    <div className="text-xs text-gray-400">
+                      {offer.base_shipping !== undefined 
+                        ? (offer.base_shipping === 0 ? "Fri frakt" : `+ ${offer.base_shipping} kr frakt`) 
+                        : ""}
+                    </div>
                   </div>
                   
                   <a href={offer.url} target="_blank" className="text-blue-600 font-medium hover:underline text-sm px-3 py-1 bg-blue-50 rounded hover:bg-blue-100 transition">

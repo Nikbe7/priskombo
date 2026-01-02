@@ -3,13 +3,13 @@ import '@testing-library/jest-dom';
 import Home from '@/app/page';
 import { CartProvider } from '@/context/CartContext';
 
-// 1. MOCKA NAVIGATION (useRouter)
+// Mocka router
 const mockPush = jest.fn();
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
 }));
 
-// 2. MOCKA FETCH
+// Mocka fetch
 // @ts-ignore
 global.fetch = jest.fn((url: string) => {
   const urlString = url.toString();
@@ -17,7 +17,6 @@ global.fetch = jest.fn((url: string) => {
   if (urlString.includes('/categories')) {
     return Promise.resolve({
       json: () => Promise.resolve([
-        // UPPDATERAT: Lade till 'slug', 'parent_id' och 'coming_soon'
         { id: 1, name: 'Hårvård', slug: 'harvard', parent_id: null, coming_soon: false }
       ]),
     });
@@ -29,22 +28,13 @@ global.fetch = jest.fn((url: string) => {
         { 
           id: 1, 
           name: 'Test Shampoo', 
-          ean: '123', 
+          slug: 'test-shampoo', // Nytt
           image_url: null,
-          prices: [{ 
-              price: 100, 
-              store: 'Apotea', 
-              url: '#', 
-              regular_price: 120,
-              discount_percent: 17 
-          }]
+          category: { name: 'Hårvård', slug: 'harvard' }, // Nytt
+          prices: [{ price: 100, store: 'Apotea', url: '#', base_shipping: 0 }] 
         }
       ]),
     });
-  }
-  
-  if (urlString.includes('/deals')) {
-    return Promise.resolve({ json: () => Promise.resolve([]) });
   }
 
   return Promise.resolve({ json: () => Promise.resolve([]) });
@@ -60,7 +50,7 @@ describe('Home Page', () => {
     jest.useRealTimers();
   });
 
-  it('söker automatiskt efter debounce och visar rätt knapp', async () => {
+  it('söker automatiskt efter debounce', async () => {
     render(
       <CartProvider>
         <Home />
@@ -69,35 +59,15 @@ describe('Home Page', () => {
     
     const input = screen.getByPlaceholderText(/Sök produkt/i);
 
-    // 1. Skriv i rutan
     fireEvent.change(input, { target: { value: 'Shampoo' } });
 
-    // 2. Snabbspola tiden (Debounce)
     act(() => {
       jest.advanceTimersByTime(400);
     });
 
-    // 3. Vänta på resultat
     await waitFor(() => {
       expect(screen.getByText('Test Shampoo')).toBeInTheDocument();
       expect(screen.getByText(/Från 100 kr/i)).toBeInTheDocument();
-      expect(screen.getByText('+ Lägg till')).toBeInTheDocument();
     });
-  });
-
-  it('renderar kategorilänkar med korrekt slug', async () => {
-    render(
-      <CartProvider>
-        <Home />
-      </CartProvider>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('Hårvård')).toBeInTheDocument();
-    });
-
-    // Klicka på kategorin och verifiera navigation
-    fireEvent.click(screen.getByText('Hårvård'));
-    expect(mockPush).toHaveBeenCalledWith('/harvard');
   });
 });

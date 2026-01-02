@@ -9,7 +9,7 @@ router = APIRouter()
 def get_best_deals(limit: int = 20, db: Session = Depends(get_db)):
     sql = text("""
         SELECT DISTINCT ON (p.id)
-            p.id, p.name, p.image_url, 
+            p.id, p.name, p.image_url, p.slug, 
             pp.price, pp.regular_price, 
             s.name as store_name, pp.url,
             pp.discount_percent
@@ -28,6 +28,7 @@ def get_best_deals(limit: int = 20, db: Session = Depends(get_db)):
         deals.append({
             "id": row.id,
             "name": row.name,
+            "slug": row.slug,
             "image_url": row.image_url,
             "price": row.price,
             "regular_price": row.regular_price,

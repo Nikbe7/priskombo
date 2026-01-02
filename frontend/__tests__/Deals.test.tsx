@@ -12,6 +12,7 @@ global.fetch = jest.fn((url: string) => {
         {
           id: 1,
           name: 'Super Schampo',
+          slug: 'super-schampo',
           image_url: 'img.jpg',
           price: 80,
           regular_price: 100,

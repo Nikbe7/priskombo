@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation"; 
 import API_URL from "@/lib/config";
 import { useCart } from "@/context/CartContext";
-import ProductImage from "@/components/ProductImage"; // <--- NY IMPORT
+import ProductImage from "@/components/ProductImage";
+import { createProductUrl } from "@/lib/utils";
 
 // Typer
 type Category = { 
@@ -16,12 +17,25 @@ type Category = {
 };
 
 type Product = { 
-  id: number; name: string; ean: string; image_url: string | null; 
+  id: number; 
+  name: string; 
+  ean: string; 
+  slug: string | null;
+  image_url: string | null;
+  category: { name: string; slug: string } | null;
   prices: { price: number; store: string; url: string }[] 
 };
 
 type Deal = {
-  id: number; name: string; image_url: string | null; price: number; regular_price: number; store: string; discount_percent: number; url: string;
+  id: number; 
+  name: string; 
+  slug: string | null;
+  image_url: string | null; 
+  price: number; 
+  regular_price: number; 
+  store: string; 
+  discount_percent: number; 
+  url: string;
 };
 
 export default function Home() {
@@ -186,7 +200,7 @@ export default function Home() {
                   {homeDeals.map((deal) => (
                     <div key={deal.id} className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-lg transition-all duration-300 group relative">
                         <div className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm z-10">-{deal.discount_percent}%</div>
-                        <Link href={`/product/${deal.id}`} className="block">
+                        <Link href={createProductUrl(deal.id, deal.slug, deal.name)} className="block">
                             {/* NYTT: Använder ProductImage och relative container */}
                             <div className="h-32 bg-slate-50 relative flex items-center justify-center p-4">
                                 <ProductImage 
@@ -199,7 +213,7 @@ export default function Home() {
                         </Link>
                         <div className="p-4">
                             <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">{deal.store}</div>
-                            <Link href={`/product/${deal.id}`} className="block mb-2 hover:text-blue-600 transition"><h3 className="font-bold text-slate-800 text-sm leading-snug line-clamp-2 h-10">{deal.name}</h3></Link>
+                            <Link href={createProductUrl(deal.id, deal.slug, deal.name)} className="block mb-2 hover:text-blue-600 transition"><h3 className="font-bold text-slate-800 text-sm leading-snug line-clamp-2 h-10">{deal.name}</h3></Link>
                             <div className="flex justify-between items-end">
                                 <div><div className="text-gray-400 text-xs line-through">{deal.regular_price} kr</div><div className="text-lg font-extrabold text-red-600">{deal.price} kr</div></div>
                                 <button onClick={() => addToBasket({id: deal.id, name: deal.name, ean: "", image_url: deal.image_url, prices: [{ price: deal.price, store: deal.store, url: deal.url }]} as any)} className="bg-blue-50 text-blue-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-blue-600 hover:text-white transition shadow-sm">+</button>
@@ -219,7 +233,7 @@ export default function Home() {
             <h2 className="text-xl font-bold text-slate-700 mb-4">Sökresultat</h2>
             {searchResults.map((p) => (
               <div key={p.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex gap-5 items-center hover:shadow-md transition group">
-                <Link href={`/product/${p.id}`} className="w-16 h-16 bg-slate-50 rounded-lg relative flex-shrink-0">
+                <Link href={createProductUrl(p.id, p.slug, p.name, p.category?.slug)} className="w-16 h-16 bg-slate-50 rounded-lg relative flex-shrink-0">
                   {/* NYTT: Använder ProductImage */}
                   <ProductImage 
                     src={p.image_url} 
@@ -229,7 +243,7 @@ export default function Home() {
                   />
                 </Link>
                 <div className="flex-1 min-w-0">
-                  <Link href={`/product/${p.id}`} className="block">
+                  <Link href={createProductUrl(p.id, p.slug, p.name, p.category?.slug)} className="block">
                     <h3 className="font-bold text-slate-800 text-base hover:text-blue-600 truncate transition">{p.name}</h3>
                   </Link>
                   <p className="text-blue-600 font-bold mt-1 text-sm">Från {Math.min(...p.prices.map(x => x.price))} kr</p>

@@ -2,6 +2,7 @@ import click
 import os
 import sys
 import subprocess
+import re
 from dotenv import load_dotenv
 
 # 1. NYTT: Importera loggning
@@ -38,6 +39,13 @@ def check_prod_environment():
         logger.warning("⚠️  VARNING: DU ÄR UPPKOPPLAD MOT PRODUKTIONSDATABASEN (SUPABASE)! ⚠️")
         return True
     return False
+
+def slugify(text: str) -> str:
+    # Enkel slug-funktion
+    text = text.lower().replace("å", "a").replace("ä", "a").replace("ö", "o")
+    text = re.sub(r'[^a-z0-9\s-]', '', text)
+    text = re.sub(r'\s+', '-', text).strip("-")
+    return text
 
 @click.group()
 def cli():
@@ -147,6 +155,51 @@ def import_feed(filename, store):
         logger.info("✅ Import klar.")
 
         update_coming_soon_status(db)
+    finally:
+        db.close()
+
+@cli.command()
+def fill_slugs():
+    """Genererar slugs för alla produkter som saknar det."""
+    db = get_db()
+    try:
+        # Hämta produkter utan slug
+        products = db.query(Product).filter(Product.slug == None).all()
+        logger.info(f"Hittade {len(products)} produkter utan slug.")
+        
+        # 1. Bygg en uppsättning av alla slugs som REDAN finns i databasen
+        existing_slugs = set(
+            row[0] for row in db.query(Product.slug).filter(Product.slug != None).all()
+        )
+        
+        count = 0
+        for p in products:
+            if not p.name: continue
+            
+            base_slug = slugify(p.name)
+            new_slug = base_slug
+            
+            # 2. Om sluggen är upptagen (antingen i DB eller i denna körning), lägg på suffix
+            # Vi testar först med ID om det finns, annars en räknare
+            suffix = 1
+            while new_slug in existing_slugs:
+                new_slug = f"{base_slug}-{p.id or suffix}"
+                # Om p.id också råkar krocka (t.ex. om vi har samma produktnamn+id sen tidigare, osannolikt men möjligt)
+                # så ökar vi suffixet tills vi hittar en ledig slot.
+                if new_slug in existing_slugs:
+                     new_slug = f"{base_slug}-{suffix}"
+                     suffix += 1
+            
+            # 3. Tilldela och markera som upptagen
+            p.slug = new_slug
+            existing_slugs.add(new_slug)
+            count += 1
+            
+        db.commit()
+        logger.info(f"✅ Uppdaterade {count} slugs utan krockar!")
+    except Exception as e:
+        logger.error(f"❌ Något gick fel: {e}")
+        db.rollback()
     finally:
         db.close()
 

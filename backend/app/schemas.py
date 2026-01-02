@@ -20,6 +20,15 @@ class CategoryBase(BaseModel):
     parent_id: Optional[int] = None
     coming_soon: bool = False
 
+# NYTT: En förenklad modell för att bygga länkar (Breadcrumbs/URL)
+class CategoryLink(BaseModel):
+    name: str
+    slug: str
+    parent: Optional['CategoryLink'] = None # Rekursiv för att hitta huvudkategorin
+
+    class Config:
+        from_attributes = True
+
 class Category(CategoryBase):
     id: int
     
@@ -46,7 +55,7 @@ class ProductBase(BaseModel):
     name: str
     ean: str
     image_url: Optional[str] = None
-    slug: Optional[str] = None # <--- VIKTIGT: Denna saknades och kraschade testerna
+    slug: Optional[str] = None 
     description: Optional[str] = None
 
 class ProductCreate(ProductBase):
@@ -55,16 +64,20 @@ class ProductCreate(ProductBase):
 class Product(ProductBase):
     id: int
     category_id: Optional[int] = None
-    category: Optional[str] = None # Namnet på kategorin
+    
+    # ÄNDRAT: Returnerar nu ett objekt med slug/parent istället för bara en sträng
+    category: Optional[CategoryLink] = None 
+    
     rating: Optional[float] = 0.0
     prices: List[ProductPrice] = []
 
     class Config:
         from_attributes = True
 
-# --- OPTIMIZER / BASKET SCHEMAS ---
-# Dessa används för /optimize endpointen
+# Behövs för att lösa den rekursiva referensen i CategoryLink
+CategoryLink.model_rebuild()
 
+# --- OPTIMIZER / BASKET SCHEMAS ---
 class BasketRequest(BaseModel):
     product_ids: List[int]
 
@@ -81,9 +94,9 @@ class StoreBasket(BaseModel):
     shipping_cost: float
     final_cost: float
     items: List[BasketItem]
-    missing_items: List[str] = [] # Namn på produkter som butiken inte hade
+    missing_items: List[str] = [] 
 
 class OptimizationResult(BaseModel):
     cheapest_option: StoreBasket
-    best_split_option: Optional[List[StoreBasket]] = None # Om det är billigare att dela upp köpet
+    best_split_option: Optional[List[StoreBasket]] = None 
     message: str

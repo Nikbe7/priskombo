@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import API_URL from "@/lib/config";
 import { useCart } from "@/context/CartContext";
+import { createProductUrl } from "@/lib/utils";
 
 export default function DealsPage() {
   const [deals, setDeals] = useState<any[]>([]);
@@ -51,7 +52,7 @@ export default function DealsPage() {
                   -{p.discount_percent}%
                 </div>
 
-                <Link href={`/product/${p.id}`} className="block relative">
+                <Link href={createProductUrl(p.id, p.slug, p.name, p.category?.slug)} className="block relative">
                   <div className="h-48 bg-gray-50 flex items-center justify-center p-6">
                     {p.image_url ? (
                       <img src={p.image_url} alt="" className="max-h-full object-contain mix-blend-multiply group-hover:scale-105 transition duration-300" />
@@ -63,7 +64,7 @@ export default function DealsPage() {
 
                 <div className="p-6">
                   <div className="text-xs text-gray-400 font-bold uppercase mb-1">{p.store}</div>
-                  <Link href={`/product/${p.id}`} className="hover:text-blue-600">
+                  <Link href={createProductUrl(p.id, p.slug, p.name, p.category?.slug)} className="hover:text-blue-600">
                     <h3 className="font-bold text-gray-800 text-lg mb-2 line-clamp-2 h-14">{p.name}</h3>
                   </Link>
                   

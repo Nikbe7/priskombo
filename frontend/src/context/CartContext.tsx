@@ -4,8 +4,10 @@ import React, { createContext, useContext, useState, ReactNode } from "react";
 type Product = { 
   id: number; 
   name: string; 
-  ean: string;
-  image_url: string | null; 
+  ean: string; 
+  slug: string | null;
+  image_url: string | null;
+  category: { name: string; slug: string } | null;
   prices: { price: number; store: string; url: string }[] 
 };
 
