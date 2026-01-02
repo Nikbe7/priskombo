@@ -11,7 +11,7 @@ def test_get_deals(client, db):
     db.add(prod)
     db.commit()
 
-    # Pris med rabatt (regular_price > price) och discount_percent > 0
+    # Pris med rabatt
     price = ProductPrice(
         product_id=prod.id, 
         store_id=store.id, 
@@ -31,5 +31,8 @@ def test_get_deals(client, db):
     data = response.json()
     
     assert len(data) >= 1
-    assert data[0]["name"] == "Rea Produkt"
-    assert data[0]["discount_percent"] == 20
+    deal = data[0]
+    
+    assert deal["name"] == "Rea Produkt"
+    assert deal["discount_percent"] == 20
+    assert deal["slug"] == "rea-produkt" # <-- Nytt: Viktigt test!

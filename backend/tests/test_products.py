@@ -1,12 +1,17 @@
-from app.models import Product, ProductPrice, Store
+from app.models import Product, ProductPrice, Store, Category
 
 def test_get_products_list_structure(client, db):
-    # 1. Förbered data i test_db
+    # 1. Förbered data
     store = Store(name="Test Store")
     db.add(store)
-    db.commit() # Måste committa för att få ID
+    db.commit()
 
-    prod = Product(name="Produkt A", ean="111", slug="produkt-a")
+    # Skapa en kategori för att testa att den följer med i listan
+    cat = Category(name="Testkategori", slug="testkategori")
+    db.add(cat)
+    db.commit()
+
+    prod = Product(name="Produkt A", ean="111", slug="produkt-a", category_id=cat.id)
     db.add(prod)
     db.commit()
 
@@ -22,30 +27,52 @@ def test_get_products_list_structure(client, db):
     json_resp = response.json()
     
     assert json_resp["total"] == 1
-    assert json_resp["data"][0]["name"] == "Produkt A"
-    assert json_resp["data"][0]["prices"][0]["store"] == "Test Store"
+    prod_data = json_resp["data"][0]
+    
+    assert prod_data["name"] == "Produkt A"
+    assert prod_data["slug"] == "produkt-a" # <-- Nytt: Kolla att slug finns
+    assert prod_data["prices"][0]["store"] == "Test Store"
+    
+    # <-- Nytt: Kolla att category är ett objekt
+    assert prod_data["category"]["name"] == "Testkategori"
+    assert prod_data["category"]["slug"] == "testkategori"
 
-def test_get_product_details(client, db):
+def test_get_product_details_by_id(client, db):
     # Förbered
-    prod = Product(name="Produkt Detalj", ean="222", slug="produkt-detalj")
+    prod = Product(name="Produkt ID", ean="222", slug="produkt-id")
     db.add(prod)
     db.commit()
 
-    # Anropa
+    # Anropa med ID
     response = client.get(f"/products/{prod.id}")
     
     # Verifiera
     assert response.status_code == 200
     data = response.json()
-    assert data["name"] == "Produkt Detalj"
+    assert data["name"] == "Produkt ID"
+    assert data["slug"] == "produkt-id"
+
+def test_get_product_details_by_slug(client, db):
+    """Testar den nya funktionaliteten: Hämta via SLUG"""
+    # Förbered
+    prod = Product(name="Produkt Slug", ean="333", slug="unik-produkt-slug")
+    db.add(prod)
+    db.commit()
+
+    # Anropa med SLUG istället för ID
+    response = client.get(f"/products/unik-produkt-slug")
+    
+    # Verifiera
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == prod.id
+    assert data["name"] == "Produkt Slug"
 
 def test_search_products(client, db):
-    # Skapa en produkt att söka på
-    prod = Product(name="Unik Osthyvel", ean="333", slug="unik-osthyvel")
+    prod = Product(name="Unik Osthyvel", ean="444", slug="unik-osthyvel")
     db.add(prod)
-    db.commit() # Viktigt!
+    db.commit()
 
-    # Sök
     response = client.get("/products?search=Osthyvel")
     assert response.status_code == 200
     assert response.json()["total"] == 1

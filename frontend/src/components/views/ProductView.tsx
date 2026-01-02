@@ -34,7 +34,7 @@ export default function ProductView({ product }: { product: ProductDetails }) {
   const bestPrice = product.prices[0]?.price || 0;
 
   // Enkel funktion för att rendera brödsmulor rekursivt (Parent -> Child)
-  const renderBreadcrumbs = (cat: CategoryLink | null | undefined) => {
+  const renderBreadcrumbs = (cat: CategoryLink | null | undefined): React.ReactNode => {
     if (!cat) return null;
     return (
       <>
