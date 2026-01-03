@@ -6,10 +6,12 @@ import CartSidebar from "@/components/CartSidebar";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import MobileCart from "@/components/MobileCart";
+import { BASE_URL } from '@/lib/config';
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(BASE_URL),
   title: "PrisKombo - Hitta billigaste varukorgen",
   description: "Jämför och kombinera priser från alla butiker.",
 };
