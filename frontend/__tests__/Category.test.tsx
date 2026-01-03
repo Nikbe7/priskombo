@@ -87,4 +87,26 @@ describe('Category View', () => {
       expect(screen.getByText(/1 \/ 150 produkter/i)).toBeInTheDocument();
     });
   });
+
+  it('visar skeletons medan data laddas', async () => {
+    // 1. Mocka en fetch som ALDRIG svarar (simulerar evig laddning)
+    // Detta tvingar komponenten att stanna i "loading"-läget
+    // @ts-ignore
+    global.fetch = jest.fn(() => new Promise(() => {}));
+
+    render(
+      <CartProvider>
+        <CategoryView />
+      </CartProvider>
+    );
+
+    // 2. Hitta skeletons via test-id (som vi lade till i ProductCardSkeleton)
+    const skeletons = screen.getAllByTestId('product-skeleton');
+    
+    // 3. Verifiera att vi visar 6 stycken (enligt din loop [...Array(6)])
+    expect(skeletons.length).toBe(6);
+    
+    // 4. Verifiera att animationen "pulse" finns
+    expect(skeletons[0].querySelector('.animate-pulse')).toBeInTheDocument();
+  });
 });
