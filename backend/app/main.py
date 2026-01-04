@@ -129,7 +129,7 @@ def optimize_basket(request: BasketRequest, db: Session = Depends(get_db)):
     Tar emot en lista med produkt-IDn och returnerar billigaste butiken.
     """
     if not request.product_ids:
-        raise HTTPException(status_code=400, detail="Varukorgen är tom")
+        raise HTTPException(status_code=400, detail="Listan är tom")
     
     best_options = calculate_best_basket(request.product_ids, db)
     return best_options

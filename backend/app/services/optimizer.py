@@ -30,7 +30,7 @@ def calculate_best_basket(product_ids: list[int], db: Session):
         return []
 
     # 1. CACHE-CHECK (Redis)
-    # Sortera IDn så att [1, 2] och [2, 1] behandlas som samma varukorg
+    # Sortera IDn så att [1, 2] och [2, 1] behandlas som samma inköpslista
     sorted_ids = sorted(product_ids)
     cache_key = f"basket_optimization:{','.join(map(str, sorted_ids))}"
 
@@ -45,7 +45,7 @@ def calculate_best_basket(product_ids: list[int], db: Session):
             logger.warning(f"Redis-fel vid läsning: {e}")
 
     # 2. Hämta data från databasen (Cache Miss)
-    logger.info(f"🧮 Räknar ut optimal varukorg för {len(product_ids)} produkter...")
+    logger.info(f"🧮 Räknar ut optimal inköpslista för {len(product_ids)} produkter...")
 
     prices = db.query(ProductPrice, Store)\
         .join(Store)\

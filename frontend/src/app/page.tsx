@@ -6,7 +6,7 @@ import API_URL from "@/lib/config";
 import { useCart } from "@/context/CartContext";
 import ProductImage from "@/components/ProductImage";
 import { createProductUrl } from "@/lib/utils";
-import ProductCardSkeleton from "@/components/skeletons/ProductCardSkeleton";
+import { toast } from "sonner";
 
 // Typer
 type Category = {
@@ -76,10 +76,12 @@ export default function Home() {
       setLoading(true);
       try {
         const res = await fetch(`${API_URL}/search?q=${debouncedQuery}`);
+        if (!res.ok) throw new Error("Nätverksfel");
         const data = await res.json();
         setSearchResults(data);
       } catch (err) {
         console.error(err);
+        toast.error("Kunde inte hämta sökresultat. Kontrollera anslutningen.");
       }
       setLoading(false);
     };
@@ -308,7 +310,7 @@ export default function Home() {
                             </div>
                           </div>
                           <button
-                            onClick={() =>
+                            onClick={() => {
                               addToBasket({
                                 id: deal.id,
                                 name: deal.name,
@@ -321,8 +323,9 @@ export default function Home() {
                                     url: deal.url,
                                   },
                                 ],
-                              } as any)
-                            }
+                              } as any);
+                              toast.success("Tillagd i din lista!");
+                            }}
                             className="bg-blue-50 text-blue-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-blue-600 hover:text-white transition shadow-sm"
                           >
                             +
@@ -384,7 +387,10 @@ export default function Home() {
                   </p>
                 </div>
                 <button
-                  onClick={() => addToBasket(p)}
+                  onClick={() => {
+                    addToBasket(p);
+                    toast.success(`${p.name} har lagts till i listan!`);
+                  }}
                   className="bg-blue-600 text-white px-4 py-1.5 rounded-full font-bold hover:bg-blue-700 transition shadow-md hover:shadow-lg text-sm"
                 >
                   + Lägg till

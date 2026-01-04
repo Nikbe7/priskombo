@@ -9,7 +9,7 @@ export default function Footer() {
         <div>
           <h3 className="font-bold text-gray-900 text-lg mb-4">PrisKombo</h3>
           <p className="mb-4">
-            Vi hjälper dig hitta den billigaste kombinationen av produkter för hela din varukorg.
+            Vi hjälper dig hitta den billigaste kombinationen av produkter för hela din inköpslista.
           </p>
           <p>&copy; {new Date().getFullYear()} PrisKombo Sverige.</p>
         </div>

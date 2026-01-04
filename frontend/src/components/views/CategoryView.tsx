@@ -8,24 +8,35 @@ import { useCart } from "@/context/CartContext";
 import { createProductUrl } from "@/lib/utils";
 import ProductImage from "@/components/ProductImage";
 import ProductCardSkeleton from "@/components/skeletons/ProductCardSkeleton";
+import { toast } from "sonner";
 
 // --- KOMPONENTER ---
 
-const SubCategoryLinks = ({ currentSlug, subCategories }: { currentSlug: string, subCategories: any[] }) => {
+const SubCategoryLinks = ({
+  currentSlug,
+  subCategories,
+}: {
+  currentSlug: string;
+  subCategories: any[];
+}) => {
   if (subCategories.length === 0) return null;
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-3 mb-8">
       {subCategories.map((sub: any) => (
-        <Link 
-            key={sub.id} 
-            // Bygg vidare på URL:en: /nuvarande-kategori/underkategori
-            href={`/${currentSlug}/${sub.slug}`} 
-            className="group"
+        <Link
+          key={sub.id}
+          // Bygg vidare på URL:en: /nuvarande-kategori/underkategori
+          href={`/${currentSlug}/${sub.slug}`}
+          className="group"
         >
           <div className="bg-white p-3 rounded-lg shadow-sm border border-slate-100 hover:border-blue-300 hover:shadow-md transition text-center flex flex-col items-center justify-center h-full">
-             <span className="text-xl mb-1 grayscale group-hover:grayscale-0 transition">📦</span>
-             <span className="font-bold text-slate-700 text-xs group-hover:text-blue-600 w-full truncate px-1">{sub.name}</span>
+            <span className="text-xl mb-1 grayscale group-hover:grayscale-0 transition">
+              📦
+            </span>
+            <span className="font-bold text-slate-700 text-xs group-hover:text-blue-600 w-full truncate px-1">
+              {sub.name}
+            </span>
           </div>
         </Link>
       ))}
@@ -385,7 +396,10 @@ export default function CategoryView() {
                           </p>
                         </div>
                         <button
-                          onClick={() => addToBasket(p)}
+                          onClick={() => {
+                            addToBasket(p);
+                            toast.success(`${p.name} har lagts till i listan!`);
+                          }}
                           className="bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white w-10 h-10 rounded-full flex items-center justify-center transition font-bold shadow-sm"
                         >
                           +

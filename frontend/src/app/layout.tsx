@@ -7,13 +7,14 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import MobileCart from "@/components/MobileCart";
 import { BASE_URL } from '@/lib/config';
+import { Toaster } from "sonner";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
-  title: "PrisKombo - Hitta billigaste varukorgen",
-  description: "Jämför och kombinera priser från alla butiker.",
+  title: "PrisKombo - Optimera din inköpslista",
+  description: "Skapa din inköpslista och se vilken butikskombination som blir billigast.",
 };
 
 export default function RootLayout({
@@ -45,6 +46,10 @@ export default function RootLayout({
             
             {/* Mobil Varukorg */}
             <MobileCart /> 
+
+            {/* Toaster i sonner */}
+            {/* richColors gör den grön/röd, closeButton lägger till ett kryss */}
+            <Toaster richColors position="top-center" closeButton />
 
           </div>
         </CartProvider>
