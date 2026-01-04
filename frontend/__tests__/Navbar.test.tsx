@@ -3,7 +3,12 @@ import '@testing-library/jest-dom';
 import Navbar from '@/components/Navbar';
 import { CartProvider, useCart } from '@/context/CartContext';
 
-// Helper-komponent för att lägga till saker i korgen
+// 1. VIKTIGT: Mocka usePathname eftersom Navbar använder det
+jest.mock("next/navigation", () => ({
+  usePathname: () => "/",
+}));
+
+// Helper-komponent
 const TestComponent = () => {
   const { addToBasket } = useCart();
   return (
@@ -11,9 +16,11 @@ const TestComponent = () => {
       id: 1, 
       name: 'Test', 
       ean: '123', 
+      slug: 'test',
+      category: null,
       image_url: '', 
       prices: [] 
-    } as any)}>
+    })}>
       Add Item
     </button>
   );
@@ -27,20 +34,15 @@ describe('Navbar', () => {
       </CartProvider>
     );
 
-    // Kolla att loggan finns
     expect(screen.getByText(/Pris/i)).toBeInTheDocument();
     expect(screen.getByText(/Kombo/i)).toBeInTheDocument();
-
-    // Kolla länkar
     expect(screen.getByText('Sök')).toBeInTheDocument();
-    // ÄNDRAT: Vi kollar efter "Deals" istället för "Kategorier"
     expect(screen.getByText(/Deals/i)).toBeInTheDocument();
-    
-    // NYTT: Kolla att "Min lista" texten finns
     expect(screen.getByText(/Min lista/i)).toBeInTheDocument();
   });
 
-  it('visar rätt antal varor i korgen', () => {
+  // UPPDATERAT TEST HÄR:
+  it('visar totalt antal varor (quantity) i korgen', () => {
     render(
       <CartProvider>
         <Navbar />
@@ -48,14 +50,18 @@ describe('Navbar', () => {
       </CartProvider>
     );
 
-    // ÄNDRAT: Den nya designen döljer badgen om korgen är tom.
-    // Vi kollar att siffran 0 INTE finns i dokumentet.
+    // 1. Tom korg -> Ingen badge
     expect(screen.queryByText('0')).not.toBeInTheDocument();
 
-    // Klicka på knappen för att lägga till en vara
-    fireEvent.click(screen.getByText('Add Item'));
+    const addButton = screen.getByText('Add Item');
 
-    // Nu ska badgen dyka upp med siffran 1
+    // 2. Lägg till 1 vara -> Badge visar "1"
+    fireEvent.click(addButton);
     expect(screen.getByText('1')).toBeInTheDocument();
+
+    // 3. Lägg till SAMMA vara igen -> Badge ska visa "2"
+    // (Detta bekräftar att du använder totalItems och inte basket.length)
+    fireEvent.click(addButton);
+    expect(screen.getByText('2')).toBeInTheDocument();
   });
 });

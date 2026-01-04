@@ -4,7 +4,8 @@ import { useCart } from "@/context/CartContext";
 import { usePathname } from "next/navigation";
 
 export default function Navbar() {
-  const { basket, toggleCart } = useCart(); // <-- Hämta toggleCart
+  // Hämta totalItems istället för basket
+  const { totalItems, toggleCart } = useCart(); 
   const pathname = usePathname();
 
   const isActive = (path: string) => pathname === path ? "text-blue-600 bg-blue-50" : "text-gray-600 hover:text-blue-600 hover:bg-gray-50";
@@ -36,17 +37,20 @@ export default function Navbar() {
         {/* LIST-IKON (Klickbar toggle) */}
         <div className="flex items-center gap-4">
           <button 
-            onClick={toggleCart} // <-- Kopplad till global toggle
+            onClick={toggleCart} 
             className="relative group cursor-pointer flex items-center gap-2 hover:bg-gray-50 p-2 rounded-lg transition"
           >
             <span className="text-sm font-bold text-gray-600 hidden sm:block group-hover:text-blue-600">Min lista</span>
             <div className="relative">
               <span className="text-2xl">📝</span>
-              {basket.length > 0 && (
+              
+              {/* ÄNDRAT HÄR: Använd totalItems */}
+              {totalItems > 0 && (
                 <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-sm animate-bounce">
-                  {basket.length}
+                  {totalItems}
                 </span>
               )}
+              
             </div>
           </button>
         </div>

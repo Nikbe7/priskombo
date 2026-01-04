@@ -58,7 +58,7 @@ describe('MobileCart', () => {
     fireEvent.click(screen.getByText('Lägg till vara'));
     
     // Verifiera att korgen är öppen direkt (vi behöver inte klicka på "Visa listan")
-    expect(screen.getByText('Din Inköpslista')).toBeInTheDocument();
+    expect(screen.getByText(/Din Inköpslista/i)).toBeInTheDocument();
     expect(screen.getByText('Testprodukt')).toBeInTheDocument();
     
     // Knappen "Visa listan" ska INTE synas nu (eftersom korgen är öppen)
@@ -71,11 +71,11 @@ describe('MobileCart', () => {
 
     // 3. Nu ska korgen vara stängd och knappen synlig igen
     expect(screen.queryByText('Din Inköpslista')).not.toBeInTheDocument();
-    const openBtn = screen.getByText(/Visa listan/i);
-    expect(openBtn).toBeInTheDocument();
+    expect(screen.getByText(/Visa listan/i)).toBeInTheDocument();
+    expect(screen.getByText("1 st")).toBeInTheDocument();
 
     // 4. Öppna igen manuellt
-    fireEvent.click(openBtn);
-    expect(screen.getByText('Din Inköpslista')).toBeInTheDocument();
+    fireEvent.click(screen.getByText(/Visa listan/i));
+    expect(screen.getByText(/Din Inköpslista/i)).toBeInTheDocument();
   });
 });
