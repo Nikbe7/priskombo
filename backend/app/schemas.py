@@ -1,5 +1,5 @@
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 # --- STORE SCHEMAS ---
 class StoreBase(BaseModel):
@@ -10,8 +10,7 @@ class Store(StoreBase):
     base_shipping: float = 0
     free_shipping_limit: Optional[float] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # --- CATEGORY SCHEMAS ---
 class CategoryBase(BaseModel):
@@ -26,14 +25,12 @@ class CategoryLink(BaseModel):
     slug: str
     parent: Optional['CategoryLink'] = None # Rekursiv för att hitta huvudkategorin
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class Category(CategoryBase):
     id: int
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # --- PRICE SCHEMAS ---
 class ProductPriceBase(BaseModel):
@@ -47,8 +44,7 @@ class ProductPrice(ProductPriceBase):
     shipping: float = 0
     in_stock: bool = True
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # --- PRODUCT SCHEMAS ---
 class ProductBase(BaseModel):
@@ -65,21 +61,24 @@ class Product(ProductBase):
     id: int
     category_id: Optional[int] = None
     
-    # ÄNDRAT: Returnerar nu ett objekt med slug/parent istället för bara en sträng
+    # Returnerar nu ett objekt med slug/parent istället för bara en sträng
     category: Optional[CategoryLink] = None 
     
     rating: Optional[float] = 0.0
     prices: List[ProductPrice] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Behövs för att lösa den rekursiva referensen i CategoryLink
 CategoryLink.model_rebuild()
 
 # --- OPTIMIZER / BASKET SCHEMAS ---
+class BasketItemRequest(BaseModel):
+    product_id: int
+    quantity: int = 1
+
 class BasketRequest(BaseModel):
-    product_ids: List[int]
+    items: List[BasketItemRequest]
 
 class BasketItem(BaseModel):
     product_id: int

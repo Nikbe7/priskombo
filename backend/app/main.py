@@ -9,6 +9,7 @@ from app.logging_config import setup_logging, get_logger
 # Databas och Modeller
 from app.database import get_db
 from app.models import Product, ProductPrice, Store
+from app.schemas import BasketRequest
 
 # Services
 from app.services.optimizer import calculate_best_basket
@@ -74,12 +75,7 @@ app.include_router(categories.router, prefix="/categories", tags=["categories"])
 app.include_router(products.router, prefix="/products", tags=["products"])
 app.include_router(deals.router, prefix="/deals", tags=["deals"])
 
-# --- DATAMODELLER (Schema) ---
-class BasketRequest(BaseModel):
-    product_ids: List[int]
-
 # --- ENDPOINTS ---
-
 @app.get("/")
 def read_root():
     return {"message": "API is running"}
@@ -126,12 +122,12 @@ def search(q: str, db: Session = Depends(get_db)):
 @app.post("/optimize")
 def optimize_basket(request: BasketRequest, db: Session = Depends(get_db)):
     """
-    Tar emot en lista med produkt-IDn och returnerar billigaste butiken.
+    Tar emot en lista med items (id + antal) och returnerar billigaste butiken.
     """
-    if not request.product_ids:
-        raise HTTPException(status_code=400, detail="Listan är tom")
+    if not request.items:
+        raise HTTPException(status_code=400, detail="Varukorgen är tom")
     
-    best_options = calculate_best_basket(request.product_ids, db)
+    best_options = calculate_best_basket(request.items, db)
     return best_options
 
 # --- TEST-ENDPOINT FÖR SCHEDULER ---

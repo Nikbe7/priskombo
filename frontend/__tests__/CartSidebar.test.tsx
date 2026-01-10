@@ -20,7 +20,7 @@ const TestAddToCart = () => {
   );
 };
 
-// NYTT: Helper för att tvinga upp korgen (eftersom den är stängd by default)
+// Helper för att tvinga upp korgen
 const ForceOpenCart = () => {
   const { setIsCartOpen } = useCart();
   useEffect(() => {
@@ -29,11 +29,12 @@ const ForceOpenCart = () => {
   return null;
 };
 
-// Mocka fetch för optimering
+// Mocka fetch
 // @ts-ignore
 global.fetch = jest.fn((url: string) => {
   if (url.includes('/optimize')) {
     return Promise.resolve({
+      ok: true, // Viktigt att lägga till ok: true för att inte trigga throw Error
       json: () => Promise.resolve([
         {
           type: 'Smart Split',
@@ -44,25 +45,27 @@ global.fetch = jest.fn((url: string) => {
       ]),
     });
   }
-  return Promise.resolve({ json: () => Promise.resolve([]) });
+  return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
 });
 
 describe('CartSidebar', () => {
+  beforeEach(() => {
+    jest.clearAllMocks(); // Rensa mocks mellan testerna
+  });
+
   it('visar tom korg från början', async () => {
     render(
       <CartProvider>
-        <ForceOpenCart /> {/* <-- Denna öppnar korgen så vi kan testa innehållet */}
+        <ForceOpenCart />
         <CartSidebar />
       </CartProvider>
     );
     
-    // Vi använder findByText för att vänta på att state-uppdateringen ska slå igenom
     expect(await screen.findByText(/Listan är tom/i)).toBeInTheDocument();
-    
     expect(screen.getByText(/Hitta bästa kombon/i)).toBeDisabled();
   });
 
-  it('kan optimera korgen när varor finns', async () => {
+  it('kan optimera korgen när varor finns och skickar rätt data', async () => {
     render(
       <CartProvider>
         <TestAddToCart />
@@ -70,23 +73,32 @@ describe('CartSidebar', () => {
       </CartProvider>
     );
 
-    // 1. Lägg till en vara (Detta öppnar också korgen automatiskt via logiken i Context)
+    // 1. Lägg till en vara
     fireEvent.click(screen.getByText('Lägg till vara'));
 
-    // 2. Kolla att den syns i korgen
+    // 2. Kolla att den syns
     expect(screen.getByText('Testprodukt')).toBeInTheDocument();
     
-    // 3. Klicka på optimera (knappen ska nu vara aktiv)
+    // 3. Klicka på optimera
     const optimizeBtn = screen.getByText(/Hitta bästa kombon/i);
     expect(optimizeBtn).not.toBeDisabled();
     fireEvent.click(optimizeBtn);
 
-    // 4. Vänta på resultatet
+    // 4. Verifiera att fetch anropades med rätt struktur (items med quantity)
     await waitFor(() => {
-      // Använd getAllByText eftersom priset visas på flera ställen
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/optimize'),
+        expect.objectContaining({
+          method: 'POST',
+          body: expect.stringContaining('"items":[{"product_id":99,"quantity":1}]')
+        })
+      );
+    });
+
+    // 5. Vänta på resultatet i UI
+    await waitFor(() => {
       const prices = screen.getAllByText('200 kr');
       expect(prices.length).toBeGreaterThan(0);
-      
       expect(screen.getByText('Smart Split')).toBeInTheDocument();
     });
   });

@@ -19,13 +19,21 @@ export default function CartSidebar() {
   const optimizeBasket = async () => {
     if (basket.length === 0) return;
     setLoading(true);
-    const productIds = basket.flatMap((p) => Array(p.quantity).fill(p.id));
+
+    const items = basket.map((p) => ({
+      product_id: p.id,
+      quantity: p.quantity,
+    }));
+
     try {
       const res = await fetch(`${API_URL}/optimize`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ product_ids: productIds }),
+        body: JSON.stringify({ items: items }),
       });
+
+      if (!res.ok) throw new Error("Kunde inte hämta optimering");
+
       const data = await res.json();
       setOptimizedResults(data);
     } catch (err) {

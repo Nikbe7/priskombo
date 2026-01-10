@@ -23,8 +23,9 @@ def test_single_store_cheapest(db):
     db.add_all([p1, p2])
     db.commit()
 
-    # 2. Kör algoritmen
-    results = calculate_best_basket([prod.id], db)
+    # 2. Kör algoritmen (OBS: Ny struktur med quantity)
+    cart_items = [{"product_id": prod.id, "quantity": 1}]
+    results = calculate_best_basket(cart_items, db)
     
     # 3. Verifiera
     best = results[0] # Listan är sorterad billigast först
@@ -54,7 +55,12 @@ def test_smart_split(db):
     db.add(ProductPrice(product_id=p2.id, store_id=s2.id, price=100.0, url=""))
     db.commit()
 
-    results = calculate_best_basket([p1.id, p2.id], db)
+    # OBS: Ny struktur
+    cart_items = [
+        {"product_id": p1.id, "quantity": 1},
+        {"product_id": p2.id, "quantity": 1}
+    ]
+    results = calculate_best_basket(cart_items, db)
     
     best = results[0]
     
@@ -62,3 +68,29 @@ def test_smart_split(db):
     # Samlat: 600+50 = 650 kr
     assert best["total_cost"] == 300.0
     assert len(best["stores"]) == 2 # Det ska vara två butiker inblandade
+
+@patch("app.services.optimizer.redis_client", None)
+def test_quantity_calculation(db):
+    """Testar att priset multipliceras korrekt med antal."""
+    store = Store(name="BulkStore", base_shipping=0, free_shipping_limit=0)
+    db.add(store)
+    db.commit()
+
+    prod = Product(name="Bulk Item", ean="999", slug="bulk")
+    db.add(prod)
+    db.commit()
+
+    price = 100.0
+    db.add(ProductPrice(product_id=prod.id, store_id=store.id, price=price, url=""))
+    db.commit()
+
+    # Vi köper 5 st
+    quantity = 5
+    cart_items = [{"product_id": prod.id, "quantity": quantity}]
+    
+    results = calculate_best_basket(cart_items, db)
+    best = results[0]
+
+    expected_cost = price * quantity # 500.0
+    assert best["details"][0]["products_cost"] == expected_cost
+    assert best["total_cost"] == expected_cost

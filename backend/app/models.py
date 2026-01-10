@@ -1,13 +1,13 @@
 from sqlalchemy import Column, Integer, String, Float, ForeignKey, Text, DateTime, Boolean
 from sqlalchemy.orm import relationship, backref
 from app.database import Base
-from datetime import datetime
+from datetime import datetime, timezone
 
 class Category(Base):
     __tablename__ = "categories"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True)
-    slug = Column(String, unique=True, index=True) # <-- NY KOLUMN
+    slug = Column(String, unique=True, index=True)
     
     parent_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
     coming_soon = Column(Boolean, default=False)
@@ -51,7 +51,7 @@ class ProductPrice(Base):
     regular_price = Column(Float, nullable=True)
     discount_percent = Column(Integer, default=0)
     url = Column(Text)
-    updated_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
 
     product = relationship("Product", back_populates="prices")
     store = relationship("Store", back_populates="prices")

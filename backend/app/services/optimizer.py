@@ -20,32 +20,44 @@ except Exception as e:
     logger.warning(f"Kunde inte initiera Redis-klient: {e}. Caching kommer vara inaktiverat.")
     redis_client = None
 
-def calculate_best_basket(product_ids: list[int], db: Session):
+def calculate_best_basket(cart_items: list, db: Session):
     """
-    Räknar ut billigaste sättet att handla en lista med produkter.
+    Räknar ut billigaste sättet att handla.
+    cart_items: Lista av objekt/dicts med 'product_id' och 'quantity'.
     Returnerar en lista med alternativ, sorterad på billigast totalpris först.
-    Använder Redis för att cacha resultatet i 5 minuter.
     """
-    if not product_ids:
+    if not cart_items:
         return []
 
+    # 0. MAPPA UPP ANTAL
+    # Skapa en map: { product_id: quantity }
+    quantity_map = {}
+    for item in cart_items:
+        # Hantera både Pydantic-objekt och vanliga dicts
+        pid = item.product_id if hasattr(item, "product_id") else item.get("product_id")
+        qty = item.quantity if hasattr(item, "quantity") else item.get("quantity", 1)
+        quantity_map[pid] = qty
+
+    product_ids = list(quantity_map.keys())
+
     # 1. CACHE-CHECK (Redis)
-    # Sortera IDn så att [1, 2] och [2, 1] behandlas som samma inköpslista
-    sorted_ids = sorted(product_ids)
-    cache_key = f"basket_optimization:{','.join(map(str, sorted_ids))}"
+    # Vi måste inkludera antalet i cache-nyckeln. 
+    # Annars kostar 1st och 10st samma sak i cachen.
+    sorted_items = sorted(quantity_map.items()) # Sorterar på produkt-ID [(1, 2), (5, 1)]
+    cache_key_str = ",".join([f"{pid}:{qty}" for pid, qty in sorted_items])
+    cache_key = f"basket_optimization:{cache_key_str}"
 
     if redis_client:
         try:
             cached_result = redis_client.get(cache_key)
             if cached_result:
-                logger.info(f"⚡ Hittade optimering i cache för {len(product_ids)} produkter.")
+                logger.info(f"⚡ Hittade optimering i cache (key: {cache_key_str})")
                 return json.loads(cached_result)
         except redis.RedisError as e:
-            # Om Redis nere, logga bara och kör utan cache
             logger.warning(f"Redis-fel vid läsning: {e}")
 
     # 2. Hämta data från databasen (Cache Miss)
-    logger.info(f"🧮 Räknar ut optimal inköpslista för {len(product_ids)} produkter...")
+    logger.info(f"🧮 Räknar ut optimal inköpslista för {len(product_ids)} unika produkter...")
 
     prices = db.query(ProductPrice, Store)\
         .join(Store)\
@@ -79,15 +91,16 @@ def calculate_best_basket(product_ids: list[int], db: Session):
             store_baskets[offer["store_id"]].append(offer)
 
     for store_id, items in store_baskets.items():
-        # Kolla vilka produkter denna butik har
         found_ids = {item["product_id"] for item in items}
         
-        # Om butiken saknar någon av produkterna i listan, hoppa över den
+        # Om butiken saknar någon av produkterna (unik), hoppa över
         if len(found_ids) != len(required_products):
             continue 
 
         store = all_stores[store_id]
-        product_total = sum(item["price"] for item in items)
+        
+        # HÄR ÄR ÄNDRINGEN: Pris * Antal
+        product_total = sum(item["price"] * quantity_map[item["product_id"]] for item in items)
         
         # Räkna frakt
         shipping = store.base_shipping
@@ -99,7 +112,7 @@ def calculate_best_basket(product_ids: list[int], db: Session):
             "stores": [store.name],
             "details": [{
                 "store": store.name,
-                "products_count": len(items),
+                "products_count": len(items), # Antal unika produkter i listan
                 "products_cost": product_total,
                 "shipping": shipping
             }],
@@ -113,9 +126,9 @@ def calculate_best_basket(product_ids: list[int], db: Session):
     for pid in product_ids:
         offers = product_map.get(pid)
         if not offers: 
-            continue # Varan finns ingenstans
+            continue 
         
-        # Sortera så billigast hamnar först
+        # Sortera så billigast (styckpris) hamnar först
         cheapest_offer = sorted(offers, key=lambda x: x["price"])[0]
         
         sid = cheapest_offer["store_id"]
@@ -134,7 +147,9 @@ def calculate_best_basket(product_ids: list[int], db: Session):
     if total_found_items == len(required_products):
         for sid, items in best_picks.items():
             store = all_stores[sid]
-            sub_total = sum(item["price"] for item in items)
+            
+            # HÄR ÄR ÄNDRINGEN: Pris * Antal för varje vald produkt
+            sub_total = sum(item["price"] * quantity_map[item["product_id"]] for item in items)
             
             shipping = store.base_shipping
             if store.free_shipping_limit and sub_total >= store.free_shipping_limit:
@@ -150,7 +165,6 @@ def calculate_best_basket(product_ids: list[int], db: Session):
                 "shipping": shipping
             })
 
-        # Lägg till Split-alternativet
         results.append({
             "type": "Smart Split (Billigast)",
             "stores": store_names,
@@ -158,13 +172,11 @@ def calculate_best_basket(product_ids: list[int], db: Session):
             "total_cost": split_total_cost
         })
 
-    # Sortera så billigaste totalpriset hamnar först
     results.sort(key=lambda x: x["total_cost"])
 
     # 3. SPARA TILL CACHE (Redis)
     if redis_client and results:
         try:
-            # Spara i 5 minuter (300 sekunder)
             redis_client.setex(cache_key, 300, json.dumps(results))
         except redis.RedisError as e:
             logger.warning(f"Kunde inte spara till Redis: {e}")
