@@ -1,7 +1,8 @@
 "use client";
-import { useState } from "react";
 import { useCart } from "@/context/CartContext";
-import API_URL from "@/lib/config";
+import Link from "next/link";
+import { useEffect } from "react";
+import { X, Trash2, ShoppingBag } from "lucide-react";
 
 export default function CartSidebar() {
   const {
@@ -10,133 +11,132 @@ export default function CartSidebar() {
     updateQuantity,
     isCartOpen,
     setIsCartOpen,
+    cartTotal,
   } = useCart();
-  const [optimizedResults, setOptimizedResults] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
 
-  if (!isCartOpen) return null;
+  // Stäng sidebar om man trycker Escape
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsCartOpen(false);
+    };
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [setIsCartOpen]);
 
-  const optimizeBasket = async () => {
-    if (basket.length === 0) return;
-    setLoading(true);
-
-    const items = basket.map((p) => ({
-      product_id: p.id,
-      quantity: p.quantity,
-    }));
-
-    try {
-      const res = await fetch(`${API_URL}/optimize`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: items }),
-      });
-
-      if (!res.ok) throw new Error("Kunde inte hämta optimering");
-
-      const data = await res.json();
-      setOptimizedResults(data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
+  // Förhindra scroll på bakgrunden när korgen är öppen
+  useEffect(() => {
+    if (isCartOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
     }
-  };
+  }, [isCartOpen]);
 
   return (
-    <div className="hidden lg:block relative w-96 h-[calc(100vh-80px)] sticky top-24 mr-6 animate-fade-in-up">
-      <aside className="w-full h-full bg-white rounded-2xl shadow-xl border border-slate-100 flex flex-col overflow-hidden">
-        {/* Header med stäng-knapp */}
-        <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-          <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-            📝 Din Inköpslista{" "}
-            <span className="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full">
+    <>
+      {/* OVERLAY */}
+      <div
+        className={`fixed inset-0 bg-black/40 z-[90] transition-opacity duration-300 backdrop-blur-sm ${
+          isCartOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
+        onClick={() => setIsCartOpen(false)}
+      />
+
+      {/* SIDEBAR */}
+      <aside
+        className={`fixed top-0 right-0 h-full w-full sm:w-[450px] bg-white z-[100] shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col ${
+          isCartOpen ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        {/* Header */}
+        <div className="p-5 border-b flex justify-between items-center bg-gray-50">
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            <ShoppingBag className="w-5 h-5" /> Din Inköpslista
+            <span className="bg-black text-white text-xs px-2 py-0.5 rounded-full">
               {basket.length}
             </span>
           </h2>
           <button
             onClick={() => setIsCartOpen(false)}
-            className="text-slate-400 hover:text-red-500 hover:bg-slate-100 p-1 rounded-full transition"
+            className="p-2 hover:bg-gray-200 rounded-full transition"
           >
-            ✕
+            <X className="w-6 h-6" />
           </button>
         </div>
 
-        {/* Produktlista */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        {/* Innehåll */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
           {basket.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-4">
-              <span className="text-4xl opacity-50">📋</span>
+            <div className="h-full flex flex-col items-center justify-center text-gray-400 space-y-4">
+              <ShoppingBag className="w-16 h-16 opacity-20" />
               <p>Listan är tom</p>
+              <button 
+                onClick={() => setIsCartOpen(false)}
+                className="text-sm text-black underline hover:no-underline"
+              >
+                Börja handla
+              </button>
             </div>
           ) : (
-            basket.map((p) => {
-              // Hitta lägsta pris för att visa
-              const minPrice = Math.min(...p.prices.map((x) => x.price));
-
-              return (
-                <div
-                  key={p.id}
-                  className="flex gap-3 bg-white p-3 rounded-xl border border-slate-100 shadow-sm hover:border-blue-200 transition group relative"
-                >
+            basket.map((item) => {
+               const minPrice = Math.min(...item.prices.map((x) => x.price));
+               
+               return (
+                <div key={item.id} className="flex gap-4 items-start border-b pb-4 last:border-0 animate-in slide-in-from-right-4">
                   {/* Bild */}
-                  <div className="w-16 h-16 bg-slate-50 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0 self-start">
-                    {p.image_url ? (
+                  <div className="w-20 h-20 bg-gray-50 rounded-lg border flex-shrink-0 relative overflow-hidden">
+                    {item.image_url ? (
                       <img
-                        src={p.image_url}
-                        className="object-contain w-full h-full mix-blend-multiply"
+                        src={item.image_url}
+                        alt={item.name}
+                        className="object-contain w-full h-full p-2 mix-blend-multiply"
                       />
                     ) : (
-                      "📦"
+                      <span className="text-2xl absolute inset-0 flex items-center justify-center">📦</span>
                     )}
                   </div>
-
-                  {/* Info & Controls */}
-                  <div className="flex-1 min-w-0 flex flex-col justify-between">
-                    <div className="flex justify-between items-start gap-2">
-                      <div className="text-sm font-semibold text-slate-700 leading-snug line-clamp-2">
-                        {p.name}
-                      </div>
-                      <button
-                        onClick={() => removeFromBasket(p.id)}
-                        className="text-slate-300 hover:text-red-500 -mt-1 -mr-1"
+                  
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-start">
+                      <h3 className="font-medium text-sm truncate pr-2 text-gray-900" title={item.name}>
+                        {/* HÄR ÄR FIXEN: / före slug */}
+                        {item.slug ? (
+                          <Link 
+                            href={`/${item.slug}`} 
+                            onClick={() => setIsCartOpen(false)}
+                            className="hover:text-blue-600 hover:underline transition-colors"
+                          >
+                            {item.name}
+                          </Link>
+                        ) : (
+                          item.name
+                        )}
+                      </h3>
+                      <button 
+                        onClick={() => removeFromBasket(item.id)}
+                        className="text-gray-400 hover:text-red-600 transition"
                       >
-                        ✕
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
 
-                    <div className="flex justify-between items-end mt-2">
-                      {/* ANTAL KNAPPAR */}
-                      <div className="flex items-center bg-slate-100 rounded-lg p-0.5">
-                        <button
-                          onClick={() => updateQuantity(p.id, -1)}
-                          aria-label="Minska antal"
-                          className="w-6 h-6 flex items-center justify-center bg-white rounded shadow-sm text-slate-600 hover:text-red-500 font-bold text-xs disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          −
-                        </button>
-                        <span className="w-6 text-center text-xs font-bold text-slate-700">
-                          {p.quantity}
-                        </span>
-                        <button
-                          onClick={() => updateQuantity(p.id, 1)}
-                          aria-label="Öka antal"
-                          className="w-6 h-6 flex items-center justify-center bg-white rounded shadow-sm text-slate-600 hover:text-blue-600 font-bold text-xs"
-                        >
-                          +
-                        </button>
+                    <div className="flex justify-between items-end mt-3">
+                      <div className="flex items-center border rounded-md bg-white shadow-sm">
+                        <button 
+                          onClick={() => updateQuantity(item.id, -1)}
+                          className="px-2 py-1 hover:bg-gray-100 text-gray-600 disabled:opacity-50"
+                        >-</button>
+                        <span className="px-2 text-sm font-semibold min-w-[1.5rem] text-center">{item.quantity}</span>
+                        <button 
+                          onClick={() => updateQuantity(item.id, 1)}
+                          className="px-2 py-1 hover:bg-gray-100 text-gray-600"
+                        >+</button>
                       </div>
-
-                      {/* Pris (Totalt för raden) */}
+                      
                       <div className="text-right">
-                        <div className="text-sm font-bold text-slate-900">
-                          {minPrice * p.quantity} kr
-                        </div>
-                        {p.quantity > 1 && (
-                          <div className="text-[10px] text-slate-400">
-                            à {minPrice} kr
-                          </div>
-                        )}
+                         <div className="font-bold text-gray-900">{Math.round(minPrice * item.quantity)} kr</div>
+                         <div className="text-[10px] text-gray-500">ca {Math.round(minPrice)} kr/st</div>
                       </div>
                     </div>
                   </div>
@@ -146,46 +146,24 @@ export default function CartSidebar() {
           )}
         </div>
 
-        {/* Footer / Action */}
-        <div className="p-6 border-t border-slate-100 bg-white">
-          <button
-            onClick={optimizeBasket}
-            disabled={basket.length === 0 || loading}
-            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-blue-200 hover:shadow-xl hover:scale-[1.02] disabled:opacity-50 disabled:scale-100 transition-all active:scale-95"
-          >
-            {loading ? "Räknar ut bästa pris..." : "Hitta bästa kombon 🚀"}
-          </button>
-
-          {optimizedResults.length > 0 && (
-            <div className="mt-4 bg-green-50 p-4 rounded-xl border border-green-100 animate-fade-in-up">
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-green-800 text-sm font-bold">
-                  Totalt pris
-                </span>
-                <span className="text-2xl font-extrabold text-green-700">
-                  {optimizedResults[0].total_cost} kr
-                </span>
-              </div>
-              <div className="text-xs text-green-600 font-medium mb-3 flex items-center gap-1">
-                <span>✅</span> {optimizedResults[0].type}
-              </div>
-              <div className="pt-3 border-t border-green-200/50 space-y-1">
-                {optimizedResults[0].details.map((d: any, i: number) => (
-                  <div
-                    key={i}
-                    className="flex justify-between text-xs text-green-800/70"
-                  >
-                    <span>{d.store}</span>
-                    <span className="font-mono">
-                      {d.products_cost + d.shipping} kr
-                    </span>
-                  </div>
-                ))}
-              </div>
+        {/* Footer */}
+        {basket.length > 0 && (
+          <div className="p-5 border-t bg-gray-50 space-y-4">
+            <div className="flex justify-between items-center text-lg font-medium text-gray-900">
+               <span>Totalt (varor):</span>
+               <span>{cartTotal} kr</span>
             </div>
-          )}
-        </div>
+            
+            <Link 
+              href="/optimize"
+              onClick={() => setIsCartOpen(false)}
+              className="block w-full py-4 bg-black text-white text-center font-bold rounded-lg hover:bg-gray-800 transition shadow-lg hover:shadow-xl transform active:scale-[0.98]"
+            >
+              Hitta bästa kombon ➔
+            </Link>
+          </div>
+        )}
       </aside>
-    </div>
+    </>
   );
 }

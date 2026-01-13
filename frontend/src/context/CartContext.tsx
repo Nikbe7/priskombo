@@ -25,9 +25,9 @@ interface CartContextType {
   basket: CartItem[];
   addToBasket: (product: Product) => void;
   removeFromBasket: (productId: number) => void;
-  updateQuantity: (productId: number, change: number) => void; // <--- NYTT
-  totalItems: number; // <--- NYTT: Totalt antal varor (t.ex. 5 st)
-  totalPriceEstimate: number; // <--- NYTT: Ungefärligt pris
+  updateQuantity: (productId: number, change: number) => void;
+  totalItems: number;
+  cartTotal: number;
   isCartOpen: boolean;
   toggleCart: () => void;
   setIsCartOpen: (isOpen: boolean) => void;
@@ -82,11 +82,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
     [basket]
   );
 
-  // Beräkna ett "bästa pris" estimat för UI
-  const totalPriceEstimate = useMemo(
+  // Beräkna totalt värde (cartTotal)
+  const cartTotal = useMemo(
     () =>
       basket.reduce((sum, item) => {
-        const lowestPrice = Math.min(...item.prices.map((p) => p.price));
+        // Hitta lägsta priset bland item.prices för att ge en uppskattning
+        const prices = item.prices.map((p) => p.price);
+        const lowestPrice = prices.length > 0 ? Math.min(...prices) : 0;
         return sum + lowestPrice * item.quantity;
       }, 0),
     [basket]
@@ -100,7 +102,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         removeFromBasket,
         updateQuantity,
         totalItems,
-        totalPriceEstimate,
+        cartTotal,
         isCartOpen,
         toggleCart,
         setIsCartOpen,

@@ -94,3 +94,52 @@ def test_quantity_calculation(db):
     expected_cost = price * quantity # 500.0
     assert best["details"][0]["products_cost"] == expected_cost
     assert best["total_cost"] == expected_cost
+
+@patch("app.services.optimizer.redis_client", None)
+def test_smart_split_suppressed_if_single_store(db):
+    """
+    Om 'Smart Split' (billigast per vara) resulterar i att ALLA varor
+    köps från samma butik, ska alternativet INTE returneras som en split.
+    Det täcks redan av 'Samlad leverans'.
+    """
+    # 1. Skapa två butiker
+    s1 = Store(name="MegaStore", base_shipping=50)
+    s2 = Store(name="DyrButik", base_shipping=50)
+    db.add_all([s1, s2])
+    db.commit()
+
+    # 2. Skapa två produkter
+    p1 = Product(name="Billig P1", ean="1", slug="p1")
+    p2 = Product(name="Billig P2", ean="2", slug="p2")
+    db.add_all([p1, p2])
+    db.commit()
+
+    # 3. MegaStore är billigast på BÅDA
+    # P1: MegaStore=100, DyrButik=200
+    db.add(ProductPrice(product_id=p1.id, store_id=s1.id, price=100.0, url=""))
+    db.add(ProductPrice(product_id=p1.id, store_id=s2.id, price=200.0, url=""))
+    
+    # P2: MegaStore=100, DyrButik=200
+    db.add(ProductPrice(product_id=p2.id, store_id=s1.id, price=100.0, url=""))
+    db.add(ProductPrice(product_id=p2.id, store_id=s2.id, price=200.0, url=""))
+    db.commit()
+
+    # 4. Optimera
+    cart_items = [
+        {"product_id": p1.id, "quantity": 1},
+        {"product_id": p2.id, "quantity": 1}
+    ]
+    results = calculate_best_basket(cart_items, db)
+    
+    # 5. Verifiera
+    # Vi förväntar oss att INGEN "Smart Split" finns med, eftersom en split 
+    # som hamnar i en enda butik ska filtreras bort.
+    # Däremot kan vi få FLERA "Samlad leverans"-alternativ (både MegaStore och DyrButik).
+    
+    smart_split_results = [r for r in results if r["type"] == "Smart Split (Billigast)"]
+    assert len(smart_split_results) == 0, "Borde inte finnas någon Smart Split om allt köps från en butik"
+
+    # Kontrollera att det bästa alternativet är MegaStore
+    best_option = results[0]
+    assert best_option["stores"][0] == "MegaStore"
+    assert best_option["type"] == "Samlad leverans"

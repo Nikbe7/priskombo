@@ -12,8 +12,9 @@ const TestAddToCart = () => {
       id: 99,
       name: 'Testprodukt',
       ean: '123',
-      image_url: '',
-      prices: []
+      slug: 'test-produkt-slug',
+      image_url: 'http://example.com/img.jpg',
+      prices: [{ price: 100, store: 'TestButik', url: '#' }]
     } as any)}>
       Lägg till vara
     </button>
@@ -29,28 +30,9 @@ const ForceOpenCart = () => {
   return null;
 };
 
-// Mocka fetch
-// @ts-ignore
-global.fetch = jest.fn((url: string) => {
-  if (url.includes('/optimize')) {
-    return Promise.resolve({
-      ok: true, // Viktigt att lägga till ok: true för att inte trigga throw Error
-      json: () => Promise.resolve([
-        {
-          type: 'Smart Split',
-          total_cost: 200,
-          stores: ['Apotea'],
-          details: [{ store: 'Apotea', products_cost: 150, shipping: 50 }]
-        }
-      ]),
-    });
-  }
-  return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
-});
-
 describe('CartSidebar', () => {
   beforeEach(() => {
-    jest.clearAllMocks(); // Rensa mocks mellan testerna
+    jest.clearAllMocks();
   });
 
   it('visar tom korg från början', async () => {
@@ -62,10 +44,12 @@ describe('CartSidebar', () => {
     );
     
     expect(await screen.findByText(/Listan är tom/i)).toBeInTheDocument();
-    expect(screen.getByText(/Hitta bästa kombon/i)).toBeDisabled();
+    // Knappen ska inte finnas eller vara disabled/gömd när listan är tom
+    // I din kod: basket.length > 0 && (...) så hela footern renderas inte.
+    expect(screen.queryByText(/Hitta bästa kombon/i)).not.toBeInTheDocument();
   });
 
-  it('kan optimera korgen när varor finns och skickar rätt data', async () => {
+  it('visar produkter och länk till optimering när varor finns', async () => {
     render(
       <CartProvider>
         <TestAddToCart />
@@ -79,27 +63,14 @@ describe('CartSidebar', () => {
     // 2. Kolla att den syns
     expect(screen.getByText('Testprodukt')).toBeInTheDocument();
     
-    // 3. Klicka på optimera
-    const optimizeBtn = screen.getByText(/Hitta bästa kombon/i);
-    expect(optimizeBtn).not.toBeDisabled();
-    fireEvent.click(optimizeBtn);
+    // 3. Kolla att länken till produktsidan finns
+    const productLink = screen.getByRole('link', { name: /Testprodukt/i });
+    expect(productLink).toHaveAttribute('href', '/test-produkt-slug');
 
-    // 4. Verifiera att fetch anropades med rätt struktur (items med quantity)
-    await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/optimize'),
-        expect.objectContaining({
-          method: 'POST',
-          body: expect.stringContaining('"items":[{"product_id":99,"quantity":1}]')
-        })
-      );
-    });
-
-    // 5. Vänta på resultatet i UI
-    await waitFor(() => {
-      const prices = screen.getAllByText('200 kr');
-      expect(prices.length).toBeGreaterThan(0);
-      expect(screen.getByText('Smart Split')).toBeInTheDocument();
-    });
+    // 4. Kolla att "Hitta bästa kombon"-länken finns och pekar rätt
+    // Använd en flexibel regex för att matcha texten även med pilen "➔"
+    const optimizeLink = screen.getByRole('link', { name: /Hitta bästa kombon/i });
+    expect(optimizeLink).toBeInTheDocument();
+    expect(optimizeLink).toHaveAttribute('href', '/optimize');
   });
 });
