@@ -5,6 +5,7 @@ import React, {
   useState,
   ReactNode,
   useMemo,
+  useEffect,
 } from "react";
 
 // Vi definierar Product som vanligt
@@ -18,7 +19,6 @@ export type Product = {
   prices: { price: number; store: string; url: string }[];
 };
 
-// Vi skapar en ny typ för varor i korgen som inkluderar antal
 export type CartItem = Product & { quantity: number };
 
 interface CartContextType {
@@ -31,6 +31,7 @@ interface CartContextType {
   isCartOpen: boolean;
   toggleCart: () => void;
   setIsCartOpen: (isOpen: boolean) => void;
+  isInitialized: boolean; // <--- NYTT: Exportera denna
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -38,35 +39,53 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export function CartProvider({ children }: { children: ReactNode }) {
   const [basket, setBasket] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  // 1. LÄGG TILL (Eller öka antal)
+  // 1. LADDA FRÅN LOCALSTORAGE
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedCart = localStorage.getItem("priskombo_cart");
+      if (savedCart) {
+        try {
+          setBasket(JSON.parse(savedCart));
+        } catch (err) {
+          console.error("Kunde inte ladda varukorgen:", err);
+        }
+      }
+      setIsInitialized(true); // Nu är vi klara
+    }
+  }, []);
+
+  // 2. SPARA TILL LOCALSTORAGE
+  useEffect(() => {
+    if (isInitialized) {
+      localStorage.setItem("priskombo_cart", JSON.stringify(basket));
+    }
+  }, [basket, isInitialized]);
+
   const addToBasket = (product: Product) => {
     setBasket((prev) => {
       const existing = prev.find((p) => p.id === product.id);
       if (existing) {
-        // Om den finns, öka antal med 1
         return prev.map((p) =>
           p.id === product.id ? { ...p, quantity: p.quantity + 1 } : p
         );
       } else {
-        // Annars lägg till ny med quantity: 1
-        setIsCartOpen(true); // Öppna bara om det är en NY produkt
+        setIsCartOpen(true);
         return [...prev, { ...product, quantity: 1 }];
       }
     });
   };
 
-  // 2. ÄNDRA ANTAL (+/-)
   const updateQuantity = (productId: number, change: number) => {
     setBasket((prev) =>
-      prev
-        .map((item) => {
-          if (item.id === productId) {
-            return { ...item, quantity: item.quantity + change };
-          }
-          return item;
-        })
-        .filter((item) => item.quantity > 0)
+      prev.map((item) => {
+        if (item.id === productId) {
+          const newQuantity = item.quantity + change;
+          return { ...item, quantity: Math.max(1, newQuantity) };
+        }
+        return item;
+      })
     );
   };
 
@@ -76,17 +95,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const toggleCart = () => setIsCartOpen((prev) => !prev);
 
-  // Beräkna totalt antal produkter
   const totalItems = useMemo(
     () => basket.reduce((sum, item) => sum + item.quantity, 0),
     [basket]
   );
 
-  // Beräkna totalt värde (cartTotal)
   const cartTotal = useMemo(
     () =>
       basket.reduce((sum, item) => {
-        // Hitta lägsta priset bland item.prices för att ge en uppskattning
         const prices = item.prices.map((p) => p.price);
         const lowestPrice = prices.length > 0 ? Math.min(...prices) : 0;
         return sum + lowestPrice * item.quantity;
@@ -106,6 +122,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         isCartOpen,
         toggleCart,
         setIsCartOpen,
+        isInitialized,
       }}
     >
       {children}

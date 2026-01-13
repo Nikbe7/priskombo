@@ -2,38 +2,30 @@
 
 import { useCart } from "@/context/CartContext";
 import API_URL from "@/lib/config";
-import {
-  ExternalLink,
-  Truck,
-  CheckCircle,
-  ArrowLeft,
-  Plus,
-  Minus,
-  Trash2,
-  RefreshCw,
-} from "lucide-react";
+import { ExternalLink, Truck, CheckCircle, ArrowLeft, Plus, Minus, Trash2, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function OptimizePage() {
-  const { basket, updateQuantity, removeFromBasket, cartTotal } = useCart();
+  const { basket, updateQuantity, removeFromBasket, cartTotal, isInitialized } = useCart();
   const [results, setResults] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  // Redirect om korgen är tom
+  // Redirect ENDAST om vi laddat klart (isInitialized) och korgen är tom
   useEffect(() => {
-    if (basket.length === 0) {
+    if (isInitialized && basket.length === 0) {
       router.push("/");
     }
-  }, [basket, router]);
+  }, [basket, isInitialized, router]);
 
-  // Hämta optimering
+  // Hämta optimering (körs bara om vi har items)
   useEffect(() => {
-    if (basket.length === 0) return;
+    if (!isInitialized || basket.length === 0) return;
 
     const fetchOptimization = async () => {
+      // ... (samma kod som innan)
       setLoading(true);
       try {
         const items = basket.map((p) => ({
@@ -46,7 +38,7 @@ export default function OptimizePage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ items }),
         });
-
+        
         if (res.ok) {
           const data = await res.json();
           setResults(data);
@@ -59,12 +51,17 @@ export default function OptimizePage() {
     };
 
     const timeoutId = setTimeout(() => {
-      fetchOptimization();
+        fetchOptimization();
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [basket]);
 
+  }, [basket, isInitialized]);
+
+  // Visa inget (eller en spinner) medan vi laddar från localStorage
+  if (!isInitialized) return null;
+
+  // Om korgen är tom (men vi har laddat klart), returnera null så redirecten hinner kicka in
   if (basket.length === 0) return null;
 
   return (
@@ -151,7 +148,6 @@ export default function OptimizePage() {
                               }
                             }}
                             className="w-7 h-7 flex items-center justify-center bg-white rounded shadow-sm hover:text-red-500 hover:bg-red-50 transition-colors"
-                            // Tog bort disabled={item.quantity <= 1} här
                           >
                             <Minus className="w-3 h-3" />
                           </button>
