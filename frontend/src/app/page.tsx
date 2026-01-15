@@ -52,13 +52,35 @@ export default function Home() {
   const { addToBasket } = useCart();
 
   useEffect(() => {
+    // Hämta kategorier säkert
     fetch(`${API_URL}/categories`)
-      .then((res) => res.json())
-      .then((data) => setCategories(data))
-      .catch(console.error);
+      .then((res) => {
+        if (!res.ok) throw new Error(`Kunde inte hämta kategorier: ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        // Kontrollera att det faktiskt är en lista (array) vi fick tillbaka
+        if (Array.isArray(data)) {
+          setCategories(data);
+        } else {
+          console.error("Oväntat svar från /categories (ej array):", data);
+          setCategories([]); // Fallback till tom lista för att undvika krasch
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        setCategories([]); // Fallback vid fel
+      });
+
+    // Hämta deals
     fetch(`${API_URL}/deals?limit=4`)
-      .then((res) => res.json())
-      .then((data) => setHomeDeals(data))
+      .then((res) => {
+        if (!res.ok) return []; // Hantera fel tyst för deals
+        return res.json();
+      })
+      .then((data) => {
+        if (Array.isArray(data)) setHomeDeals(data);
+      })
       .catch(console.error);
   }, []);
 

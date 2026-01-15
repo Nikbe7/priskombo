@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.models import ProductPrice, Store, Product
 from collections import defaultdict
 from app.logging_config import get_logger
+from app.services.affiliate import generate_tracking_link
 
 logger = get_logger("optimizer")
 
@@ -73,18 +74,19 @@ def calculate_best_basket(cart_items: list, db: Session):
     all_stores = {}
 
     for price, store, product in prices:
-        product_map[price.product_id].append(
-            {
-                "product_id": price.product_id,
-                "product_name": product.name,
-                "product_slug": product.slug,
-                "store_id": store.id,
-                "store_name": store.name,
-                "price": price.price,
-                "url": price.url,
-                "shipping_rules": store,
-            }
-        )
+        tracking_url = generate_tracking_link(price.url, store)
+
+        product_map[price.product_id].append({
+            "product_id": price.product_id,
+            "product_name": product.name,
+            "product_slug": product.slug,
+            "store_id": store.id,
+            "store_name": store.name,
+            "price": price.price,
+            "url": tracking_url,
+            "original_url": price.url,
+            "shipping_rules": store
+        })
         all_stores[store.id] = store
 
     results = []
@@ -121,7 +123,11 @@ def calculate_best_basket(cart_items: list, db: Session):
                             quantity_map[item["product_id"]] for item in items
                         ),
                         "products": [
-                            {"name": item["product_name"], "slug": item["product_slug"]} 
+                            {
+                                "name": item["product_name"], 
+                                "slug": item["product_slug"],
+                                "url": item.get("url")
+                            } 
                             for item in items
                         ],
                         "products_cost": product_total,
@@ -171,7 +177,11 @@ def calculate_best_basket(cart_items: list, db: Session):
                         quantity_map[item["product_id"]] for item in items
                     ),
                     "products": [
-                        {"name": item["product_name"], "slug": item["product_slug"]} 
+                        {
+                            "name": item["product_name"], 
+                            "slug": item["product_slug"],
+                            "url": item.get("url")
+                        } 
                         for item in items
                     ],
                     "products_cost": sub_total,

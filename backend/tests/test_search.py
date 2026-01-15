@@ -14,8 +14,8 @@ def test_search_endpoint(client, db):
     db.add(price)
     db.commit()
 
-    # 2. Sök via /search endpointen (den som returnerar enkel lista)
-    response = client.get("/search?q=Gaming")
+    # 2. Sök via /api/v1/search endpointen (den som returnerar enkel lista)
+    response = client.get("/api/v1/search?q=Gaming")
     
     assert response.status_code == 200
     data = response.json()

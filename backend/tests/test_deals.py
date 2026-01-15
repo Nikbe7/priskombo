@@ -24,7 +24,7 @@ def test_get_deals(client, db):
     db.commit()
 
     # 3. Anropa API
-    response = client.get("/deals")
+    response = client.get("/api/v1/deals")
     
     # 4. Verifiera
     assert response.status_code == 200

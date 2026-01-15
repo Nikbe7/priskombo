@@ -41,6 +41,8 @@ class Store(Base):
     base_shipping = Column(Float, default=0.0)
     free_shipping_limit = Column(Float, nullable=True)
     prices = relationship("ProductPrice", back_populates="store")
+    affiliate_network = Column(String)
+    affiliate_program_id = Column(String)
 
 class ProductPrice(Base):
     __tablename__ = "product_prices"

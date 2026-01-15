@@ -12,7 +12,6 @@ router = APIRouter()
 def get_categories(db: Session = Depends(get_db)):
     return db.query(Category).all()
 
-# ÄNDRAT: Tar emot slug (str) istället för id (int)
 @router.get("/{slug}")
 def get_category_by_slug(
     slug: str, 

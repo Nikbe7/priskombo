@@ -1,6 +1,6 @@
-from unittest.mock import patch
-from app.services.optimizer import calculate_best_basket
 from app.models import Product, ProductPrice, Store
+from app.services.optimizer import calculate_best_basket
+from unittest.mock import patch
 
 # Vi patchar bort redis_client så att vi alltid testar logiken, inte cachen
 @patch("app.services.optimizer.redis_client", None) 
@@ -143,3 +143,41 @@ def test_smart_split_suppressed_if_single_store(db):
     best_option = results[0]
     assert best_option["stores"][0] == "MegaStore"
     assert best_option["type"] == "Samlad leverans"
+
+@patch("app.services.optimizer.redis_client", None)
+def test_optimizer_returns_tracking_links(db):
+    """
+    Verifierar att optimeraren returnerar tracking-länkar (via affiliate service)
+    istället för de råa länkarna från databasen.
+    """
+    # 1. Setup: Butik med Adtraction
+    store = Store(
+        name="AffiliateStore", 
+        base_shipping=0, 
+        affiliate_network="adtraction",
+        affiliate_program_id="112233"
+    )
+    db.add(store)
+    db.commit()
+
+    prod = Product(name="TestP", ean="111", slug="p1")
+    db.add(prod)
+    db.commit()
+
+    # Pris med en "vanlig" url
+    raw_url = "https://butik.se/produkt"
+    price = ProductPrice(product_id=prod.id, store_id=store.id, price=100.0, url=raw_url)
+    db.add(price)
+    db.commit()
+
+    # 2. Kör optimering
+    cart = [{"product_id": prod.id, "quantity": 1}]
+    results = calculate_best_basket(cart, db)
+
+    # 3. Verifiera resultatet
+    # Vi förväntar oss att URLen i svaret är en tracking-länk, INTE raw_url
+    offer_url = results[0]["details"][0]["products"][0].get("url") # Beroende på hur du strukturerat 'details'
+    
+    # Exempel på check:
+    assert "at.track.adtr.co" in offer_url
+    assert "112233" in offer_url

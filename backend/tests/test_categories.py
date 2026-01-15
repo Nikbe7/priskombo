@@ -11,7 +11,7 @@ def test_get_categories(client, db):
     db.commit()
 
     # 2. Anropa API
-    response = client.get("/categories/")
+    response = client.get("/api/v1/categories/")
     
     # 3. Verifiera
     assert response.status_code == 200

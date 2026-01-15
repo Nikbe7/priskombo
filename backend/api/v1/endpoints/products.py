@@ -5,7 +5,7 @@ from sqlalchemy import or_, desc, asc, func
 
 from app.database import get_db
 from app.models import Product, ProductPrice, Store, Category
-# Vi behöver inte importera schemas här för logiken, men bra för return types om vi vill vara explicita
+from app.services.affiliate import generate_tracking_link  # <--- NY IMPORT
 
 router = APIRouter()
 
@@ -27,7 +27,7 @@ def get_products(
     # Vi inkluderar även kategori-objektet här så att produktlistor kan bygga länkar direkt
     query = db.query(Product).options(
         selectinload(Product.prices).joinedload(ProductPrice.store),
-        joinedload(Product.category) # <-- NYTT: Ladda kategorin (men kanske inte hela trädet för listor för att spara prestanda)
+        joinedload(Product.category)
     )
 
     # 1. Filtrera på kategori
@@ -73,10 +73,13 @@ def get_products(
         price_list = []
         for price in p.prices:
             if price.store:
+                # --- GENERERA TRACKING LÄNK HÄR ---
+                tracking_url = generate_tracking_link(price.url, price.store)
+                
                 price_list.append({
                     "store": price.store.name,
                     "price": price.price,
-                    "url": price.url
+                    "url": tracking_url  # Använd den genererade länken
                 })
 
         price_list.sort(key=lambda x: x['price'])
@@ -88,7 +91,6 @@ def get_products(
             category_data = {
                 "name": p.category.name,
                 "slug": p.category.slug,
-                # Vi skippar parent i list-vyn för att hålla responsen lätt
             }
 
         results.append({
@@ -98,7 +100,7 @@ def get_products(
             "slug": p.slug,
             "image_url": p.image_url,
             "category_id": p.category_id,
-            "category": category_data, # <-- Uppdaterat fält
+            "category": category_data,
             "rating": rating,
             "prices": price_list
         })
@@ -135,12 +137,15 @@ def get_product_details(id_or_slug: str, db: Session = Depends(get_db)):
     price_list = []
     for price in product.prices:
         if price.store:
+            tracking_url = generate_tracking_link(price.url, price.store)
+            
             price_list.append({
                 "store": price.store.name,
                 "price": price.price,
                 "regular_price": price.regular_price, 
                 "discount_percent": price.discount_percent,
-                "url": price.url,
+                "url": tracking_url,
+                "original_url": price.url,
                 "in_stock": True,
                 "shipping": price.store.base_shipping
             })
@@ -160,7 +165,7 @@ def get_product_details(id_or_slug: str, db: Session = Depends(get_db)):
             category_data["parent"] = {
                 "name": product.category.parent.name,
                 "slug": product.category.parent.slug,
-                "parent": None # Stoppar rekursionen här (vi stödjer bara 2 nivåer i URL just nu)
+                "parent": None # Stoppar rekursionen här
             }
 
     return {
@@ -169,6 +174,6 @@ def get_product_details(id_or_slug: str, db: Session = Depends(get_db)):
         "ean": product.ean,
         "slug": product.slug,
         "image_url": product.image_url,
-        "category": category_data, # Returnerar objektet nu!
+        "category": category_data,
         "prices": price_list
     }

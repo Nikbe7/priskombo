@@ -1,0 +1,1 @@
+# Kan användas för att spara varukorgen i databasen (t.ex. för inloggade användare som vill se samma korg på mobilen och datorn).
