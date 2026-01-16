@@ -185,7 +185,7 @@ export default function ProductView({ product }: { product: ProductDetails }) {
                   <a
                     href={offer.url}
                     target="_blank"
-                    className="text-blue-600 font-medium hover:underline text-sm px-3 py-1 bg-blue-50 rounded hover:bg-blue-100 transition"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white text-sm font-bold rounded-xl hover:bg-blue-600 transition-all shadow-md hover:shadow-lg transform active:scale-95 whitespace-nowrap"
                   >
                     Till butik →
                   </a>

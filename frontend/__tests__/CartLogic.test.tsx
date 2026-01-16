@@ -7,12 +7,22 @@ import { toast } from "sonner";
 
 // 1. Mocka beroenden
 jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
-jest.mock("next/navigation", () => ({ useRouter: () => ({ push: jest.fn() }) }));
+jest.mock("next/navigation", () => ({ 
+  useRouter: () => ({ push: jest.fn() }),
+  usePathname: () => "/",
+}));
 
 // 2. Mocka fetch
 // @ts-ignore
 global.fetch = jest.fn((url: string) => {
   const urlString = url.toString();
+
+  if (urlString.includes("/categories")) {
+      return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([]) // Tom lista är ok
+      });
+  }
 
   // Returnera vår testprodukt för DEALS
   if (urlString.includes("/deals")) {
@@ -48,8 +58,12 @@ const TestApp = () => (
 
 describe("Varukorgslogik", () => {
   beforeEach(() => {
+    // Rensa
     window.localStorage.clear();
     jest.clearAllMocks();
+
+    // SPIONERA på setItem (för testet som kollar om det sparas)
+    jest.spyOn(window.localStorage, "setItem");
   });
 
   it("lägger till produkt i korgen och öppnar sidebar", async () => {

@@ -124,8 +124,10 @@ def calculate_best_basket(cart_items: list, db: Session):
                         ),
                         "products": [
                             {
+                                "id": item["product_id"],
                                 "name": item["product_name"], 
                                 "slug": item["product_slug"],
+                                "price": item["price"],
                                 "url": item.get("url")
                             } 
                             for item in items
@@ -178,8 +180,10 @@ def calculate_best_basket(cart_items: list, db: Session):
                     ),
                     "products": [
                         {
+                            "id": item["product_id"],
                             "name": item["product_name"], 
                             "slug": item["product_slug"],
+                            "price": item["price"],
                             "url": item.get("url")
                         } 
                         for item in items

@@ -3,6 +3,7 @@ import { useCart } from "@/context/CartContext";
 import Link from "next/link";
 import { useEffect } from "react";
 import { X, Trash2, ShoppingBag } from "lucide-react";
+import { usePathname } from "next/navigation"; // <--- 1. NY IMPORT
 
 export default function CartSidebar() {
   const {
@@ -14,6 +15,10 @@ export default function CartSidebar() {
     cartTotal,
   } = useCart();
 
+  // --- 2. NY LOGIK HÄR ---
+  const pathname = usePathname();
+  const isOptimizePage = pathname === "/optimize";
+
   // Stäng sidebar om man trycker Escape
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -23,28 +28,34 @@ export default function CartSidebar() {
     return () => window.removeEventListener("keydown", handleEsc);
   }, [setIsCartOpen]);
 
-  // Förhindra scroll på bakgrunden när korgen är öppen
+  // --- "PUSH" EFFEKT (Din befintliga kod, rör ej) ---
   useEffect(() => {
-    if (isCartOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
-    }
+    const adjustBodyPadding = () => {
+      if (window.innerWidth >= 640) {
+        if (isCartOpen) {
+          document.body.style.paddingRight = "450px";
+          document.body.style.transition = "padding-right 0.3s ease-in-out";
+        } else {
+          document.body.style.paddingRight = "0px";
+        }
+      } else {
+        document.body.style.paddingRight = "0px";
+      }
+    };
+
+    adjustBodyPadding();
+    window.addEventListener("resize", adjustBodyPadding);
+    
+    return () => {
+      window.removeEventListener("resize", adjustBodyPadding);
+      document.body.style.paddingRight = "0px";
+    };
   }, [isCartOpen]);
 
   return (
     <>
-      {/* OVERLAY */}
-      <div
-        className={`fixed inset-0 bg-black/40 z-[90] transition-opacity duration-300 backdrop-blur-sm ${
-          isCartOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-        }`}
-        onClick={() => setIsCartOpen(false)}
-      />
-
-      {/* SIDEBAR */}
       <aside
-        className={`fixed top-0 right-0 h-full w-full sm:w-[450px] bg-white z-[100] shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col ${
+        className={`fixed top-0 right-0 h-full w-full sm:w-[450px] bg-white z-[100] shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col border-l border-gray-100 ${
           isCartOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
@@ -56,9 +67,11 @@ export default function CartSidebar() {
               {basket.length}
             </span>
           </h2>
+          
           <button
             onClick={() => setIsCartOpen(false)}
             className="p-2 hover:bg-gray-200 rounded-full transition"
+            title="Stäng"
           >
             <X className="w-6 h-6" />
           </button>
@@ -79,7 +92,8 @@ export default function CartSidebar() {
             </div>
           ) : (
             basket.map((item) => {
-               const minPrice = Math.min(...item.prices.map((x) => x.price));
+               const hasPrices = item.prices && item.prices.length > 0;
+               const minPrice = hasPrices ? Math.min(...item.prices.map((x) => x.price)) : 0;
                
                return (
                 <div key={item.id} className="flex gap-4 items-start border-b pb-4 last:border-0 animate-in slide-in-from-right-4">
@@ -100,11 +114,9 @@ export default function CartSidebar() {
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-start">
                       <h3 className="font-medium text-sm truncate pr-2 text-gray-900" title={item.name}>
-                        {/* HÄR ÄR FIXEN: / före slug */}
                         {item.slug ? (
                           <Link 
                             href={`/${item.slug}`} 
-                            onClick={() => setIsCartOpen(false)}
                             className="hover:text-blue-600 hover:underline transition-colors"
                           >
                             {item.name}
@@ -141,8 +153,8 @@ export default function CartSidebar() {
                       </div>
                       
                       <div className="text-right">
-                         <div className="font-bold text-gray-900">{Math.round(minPrice * item.quantity)} kr</div>
-                         <div className="text-[10px] text-gray-500">ca {Math.round(minPrice)} kr/st</div>
+                          <div className="font-bold text-gray-900">{Math.round(minPrice * item.quantity)} kr</div>
+                          <div className="text-[10px] text-gray-500">ca {Math.round(minPrice)} kr/st</div>
                       </div>
                     </div>
                   </div>
@@ -160,13 +172,21 @@ export default function CartSidebar() {
                <span>{cartTotal} kr</span>
             </div>
             
-            <Link 
-              href="/optimize"
-              onClick={() => setIsCartOpen(false)}
-              className="block w-full py-4 bg-black text-white text-center font-bold rounded-lg hover:bg-gray-800 transition shadow-lg hover:shadow-xl transform active:scale-[0.98]"
-            >
-              Hitta bästa kombon ➔
-            </Link>
+            {/* --- 3. DÖLJ KNAPPEN OM VI ÄR PÅ OPTIMIZE --- */}
+            {!isOptimizePage && (
+                <Link 
+                    href="/optimize"
+                    className="block w-full py-4 bg-black text-white text-center font-bold rounded-lg hover:bg-gray-800 transition shadow-lg hover:shadow-xl transform active:scale-[0.98]"
+                >
+                    Hitta bästa kombon ➔
+                </Link>
+            )}
+
+            {isOptimizePage && (
+                <div className="text-center text-xs text-gray-400">
+                    Justera antal här för att se priset uppdateras
+                </div>
+            )}
           </div>
         )}
       </aside>
