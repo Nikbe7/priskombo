@@ -86,12 +86,6 @@ export default function OptimizePage() {
         
         {/* HEADER */}
         <div className="mb-10 text-center">
-             <Link
-                href="/"
-                className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-slate-900 transition mb-4"
-              >
-                <ArrowLeft className="w-4 h-4 mr-1" /> Tillbaka till butiken
-              </Link>
               <h1 className="text-3xl md:text-5xl font-extrabold text-slate-900 tracking-tight mb-3">
                 Ditt optimala köp
               </h1>
