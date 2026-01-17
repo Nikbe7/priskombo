@@ -3,7 +3,6 @@ import {
   screen,
   fireEvent,
   waitFor,
-  act,
 } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import Home from "@/app/page";
@@ -18,13 +17,17 @@ jest.mock("sonner", () => ({
   },
 }));
 
-// 2. Mocka router
+// 2. Mocka router och searchParams
 const mockPush = jest.fn();
+// Vi använder en variabel för att kunna ändra sökparametern i testerna
+let mockSearchParams = new URLSearchParams();
+
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
+  useSearchParams: () => mockSearchParams,
 }));
 
-// 3. Definiera "Happy Path" för fetch (Standardbeteende som fungerar)
+// 3. Definiera "Happy Path" för fetch
 const mockFetchHappyPath = (url: any) => {
   const urlString = url.toString();
 
@@ -66,7 +69,6 @@ const mockFetchHappyPath = (url: any) => {
 };
 
 describe("Home Page", () => {
-  // Spara original console.error för att kunna återställa
   const originalConsoleError = console.error;
 
   beforeEach(() => {
@@ -74,52 +76,54 @@ describe("Home Page", () => {
     mockPush.mockClear();
     (toast.success as jest.Mock).mockClear();
     (toast.error as jest.Mock).mockClear();
+    mockSearchParams = new URLSearchParams(); // Återställ params
 
-    // VIKTIGT: Återställ fetch till "Happy Path" inför VARJE test
     // @ts-ignore
     global.fetch = jest.fn(mockFetchHappyPath);
-
-    // Tysta ner console.error under testerna (så vi slipper se "Nätverksfel" i loggen)
     console.error = jest.fn();
   });
 
   afterEach(() => {
     jest.useRealTimers();
-    console.error = originalConsoleError; // Återställ console.error
+    console.error = originalConsoleError;
   });
 
-  it("söker automatiskt efter debounce och visar resultat", async () => {
+  it("visar sökresultat automatiskt när URL innehåller ?q=Shampoo", async () => {
+    // Sätt sökparametern INNAN vi renderar
+    mockSearchParams.set("q", "Shampoo");
+
     render(
       <CartProvider>
         <Home />
       </CartProvider>
     );
 
-    const input = screen.getByPlaceholderText(/Sök produkt/i);
-    fireEvent.change(input, { target: { value: "Shampoo" } });
-
-    act(() => {
-      jest.advanceTimersByTime(400);
-    });
-
+    // Eftersom query finns i URL ska sökning ske direkt (inuti useEffect)
     await waitFor(() => {
+      // Kolla att fetch anropades med rätt URL
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining("/search?q=Shampoo")
+      );
+      
+      // Kolla att resultatet visas
       expect(screen.getByText("Test Shampoo")).toBeInTheDocument();
       expect(screen.getByText(/Från 100 kr/i)).toBeInTheDocument();
     });
   });
 
-  it("visar fel-toast vid nätverksfel", async () => {
+  it("visar fel-toast vid nätverksfel (via URL parameter)", async () => {
+    // Sätt sökparametern
+    mockSearchParams.set("q", "Fail");
+
     // SKRIV ÖVER fetch BARA FÖR DETTA TEST
     // @ts-ignore
     global.fetch = jest.fn((url: any) => {
       const urlString = url.toString();
       
-      // Låt categories/deals funka (så sidan inte kraschar direkt)
       if (urlString.includes("/categories") || urlString.includes("/deals")) {
-         return mockFetchHappyPath(url);
+          return mockFetchHappyPath(url);
       }
-
-      // Men få /search att misslyckas
+      
       if (urlString.includes("/search")) {
         return Promise.resolve({ ok: false });
       }
@@ -133,33 +137,19 @@ describe("Home Page", () => {
       </CartProvider>
     );
 
-    const input = screen.getByPlaceholderText(/Sök produkt/i);
-    fireEvent.change(input, { target: { value: "Fail" } });
-
-    act(() => {
-      jest.advanceTimersByTime(400);
-    });
-
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith(expect.stringContaining("Kunde inte hämta"));
     });
   });
 
-  it("visar success-toast när man lägger till en produkt", async () => {
-    // Här behöver vi inte göra något med fetch, för beforeEach har återställt den till Happy Path!
-    
+  it("visar success-toast när man lägger till en produkt från sökresultatet", async () => {
+    mockSearchParams.set("q", "Shampoo");
+
     render(
       <CartProvider>
         <Home />
       </CartProvider>
     );
-
-    const input = screen.getByPlaceholderText(/Sök produkt/i);
-    fireEvent.change(input, { target: { value: "Shampoo" } });
-
-    act(() => {
-      jest.advanceTimersByTime(400);
-    });
 
     // Vänta på resultatet
     await waitFor(() => {

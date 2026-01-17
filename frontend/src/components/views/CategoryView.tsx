@@ -314,22 +314,6 @@ export default function CategoryView() {
         />
 
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* FILTER PANEL */}
-          <aside className="w-full lg:w-64 flex-shrink-0 space-y-8 hidden md:block">
-            <div>
-              <h3 className="font-bold text-gray-900 mb-3">
-                Sök i {categoryInfo.name}
-              </h3>
-              <input
-                type="text"
-                placeholder="Sök produkt..."
-                className="w-full p-3 rounded-lg border border-gray-200 focus:border-blue-500 outline-none text-sm"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-          </aside>
-
           {/* PRODUKTLISTA */}
           <div className="flex-1">
             <div className="flex justify-end mb-6">

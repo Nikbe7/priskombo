@@ -1,7 +1,7 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import API_URL from "@/lib/config";
 import { useCart } from "@/context/CartContext";
 import ProductImage from "@/components/ProductImage";
@@ -39,11 +39,14 @@ type Deal = {
   url: string;
 };
 
-export default function Home() {
+function HomeContent() {
   const router = useRouter();
-  const [query, setQuery] = useState("");
-  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const searchParams = useSearchParams(); // Hämta URL params
+  
+  // Hämta 'q' från URL:en
+  const queryFromUrl = searchParams.get("q") || "";
 
+  // Ta bort lokalt "query" state för input, använd queryFromUrl för sökning
   const [categories, setCategories] = useState<Category[]>([]);
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [homeDeals, setHomeDeals] = useState<Deal[]>([]);
@@ -59,23 +62,21 @@ export default function Home() {
         return res.json();
       })
       .then((data) => {
-        // Kontrollera att det faktiskt är en lista (array) vi fick tillbaka
         if (Array.isArray(data)) {
           setCategories(data);
         } else {
-          console.error("Oväntat svar från /categories (ej array):", data);
-          setCategories([]); // Fallback till tom lista för att undvika krasch
+          setCategories([]); 
         }
       })
       .catch((err) => {
         console.error(err);
-        setCategories([]); // Fallback vid fel
+        setCategories([]);
       });
 
     // Hämta deals
     fetch(`${API_URL}/deals?limit=4`)
       .then((res) => {
-        if (!res.ok) return []; // Hantera fel tyst för deals
+        if (!res.ok) return [];
         return res.json();
       })
       .then((data) => {
@@ -84,41 +85,36 @@ export default function Home() {
       .catch(console.error);
   }, []);
 
-  useEffect(() => {
-    const handler = setTimeout(() => setDebouncedQuery(query), 400);
-    return () => clearTimeout(handler);
-  }, [query]);
-
+  // Lyssna på queryFromUrl istället för debouncedQuery
   useEffect(() => {
     const performSearch = async () => {
-      if (debouncedQuery.length < 2) {
+      if (queryFromUrl.length < 2) {
         setSearchResults([]);
         return;
       }
       setLoading(true);
       try {
-        const res = await fetch(`${API_URL}/search?q=${debouncedQuery}`);
+        const res = await fetch(`${API_URL}/search?q=${encodeURIComponent(queryFromUrl)}`);
         if (!res.ok) throw new Error("Nätverksfel");
         const data = await res.json();
         setSearchResults(data);
       } catch (err) {
         console.error(err);
-        toast.error("Kunde inte hämta sökresultat. Kontrollera anslutningen.");
+        toast.error("Kunde inte hämta sökresultat.");
       }
       setLoading(false);
     };
     performSearch();
-  }, [debouncedQuery]);
+  }, [queryFromUrl]);
 
-  // Hjälpfunktion: Gruppera kategorier
   const rootCategories = categories.filter((c) => c.parent_id === null);
   const getSubCategories = (parentId: number) =>
     categories.filter((c) => c.parent_id === parentId);
 
   return (
     <div className="min-h-screen">
-      {/* HERO */}
-      <section className="relative bg-gradient-to-b from-blue-50 to-white pt-32 pb-16 px-6 text-center">
+      {/* HERO - Utan sökfält nu */}
+      <section className="relative bg-gradient-to-b from-blue-50 to-white pt-32 pb-10 px-6 text-center">
         <div className="max-w-4xl mx-auto relative z-10">
           <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight mb-4 leading-tight">
             Spara pengar på <br />
@@ -130,51 +126,22 @@ export default function Home() {
             Sök, kombinera och optimera. Vi hittar den billigaste lösningen för
             hela din inköpslista.
           </p>
-
-          <div className="relative max-w-xl mx-auto group">
-            <div className="absolute -inset-1 bg-gradient-to-r from-blue-400 to-indigo-400 rounded-full opacity-20 group-hover:opacity-40 transition duration-500 blur"></div>
-            <form
-              onSubmit={(e) => e.preventDefault()}
-              className="relative bg-white rounded-full shadow-xl flex items-center p-1.5"
-            >
-              <span className="pl-4 text-xl">🔍</span>
-              <input
-                className="flex-1 p-3 bg-transparent outline-none text-base text-slate-700 placeholder:text-slate-400"
-                placeholder="Sök produkt..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-              {/* VISA SKELETONS NÄR VI SÖKER */}
-              {loading && (
-                <div className="space-y-4 max-w-3xl mx-auto animate-fade-in-up">
-                  <h2 className="text-xl font-bold text-slate-700 mb-4">
-                    Söker...
-                  </h2>
-                  {[...Array(3)].map((_, i) => (
-                    <div
-                      key={i}
-                      className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex gap-5 items-center"
-                    >
-                      <div className="w-16 h-16 bg-gray-100 rounded-lg flex-shrink-0 animate-pulse" />
-                      <div className="flex-1 space-y-2">
-                        <div className="h-4 bg-gray-100 rounded w-1/2 animate-pulse" />
-                        <div className="h-4 bg-gray-100 rounded w-1/4 animate-pulse" />
-                      </div>
-                      <div className="w-20 h-8 bg-gray-100 rounded-full animate-pulse" />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </form>
-          </div>
+          
+          {/* Laddningsindikator om URL:en har en sökning men vi laddar */}
+          {loading && (
+             <div className="max-w-md mx-auto mt-8 p-4 bg-white rounded-xl shadow-sm border border-slate-100 flex items-center gap-3 animate-pulse">
+                <div className="w-6 h-6 bg-gray-200 rounded-full"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+             </div>
+          )}
         </div>
       </section>
 
       <main className="p-4 md:p-8 max-w-[1600px] mx-auto">
-        {/* START-VY */}
-        {searchResults.length === 0 && !loading && query.length === 0 && (
+        {/* START-VY (Visa bara om ingen sökning pågår) */}
+        {searchResults.length === 0 && !loading && queryFromUrl.length === 0 && (
           <div className="space-y-16 animate-fade-in-up">
-            {/* KATEGORI-GRID */}
+            {/* KATEGORI-GRID ... (Samma kod som förut) */}
             <section>
               <h2 className="text-xl font-bold mb-6 text-slate-800 flex items-center gap-2">
                 <span className="w-1 h-6 bg-blue-600 rounded-full"></span>
@@ -204,7 +171,6 @@ export default function Home() {
                   return (
                     <div
                       key={root.id}
-                      // Huvudkategori: /parent-slug
                       onClick={() =>
                         !isComingSoon && router.push(`/${root.slug}`)
                       }
@@ -232,7 +198,6 @@ export default function Home() {
                         )}
                       </div>
 
-                      {/* Dropdown-lista */}
                       {!isComingSoon && (
                         <div
                           className="absolute inset-x-0 top-full mt-1 bg-white/95 backdrop-blur-md rounded-xl shadow-xl border border-blue-100 z-50 flex flex-col 
@@ -256,7 +221,6 @@ export default function Home() {
                             {subs.map((sub) => (
                               <Link
                                 key={sub.id}
-                                // ÄNDRING: Bygg full sökväg /parent/child
                                 href={`/${root.slug}/${sub.slug}`}
                                 className="block px-3 py-1.5 text-xs text-slate-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors font-medium text-left"
                               >
@@ -272,7 +236,7 @@ export default function Home() {
               </div>
             </section>
 
-            {/* DEALS SEKTIONEN */}
+            {/* DEALS ... (Samma kod) */}
             {homeDeals.length > 0 && (
               <section className="pt-8 border-t border-slate-100">
                 <div className="flex justify-between items-end mb-6">
@@ -300,7 +264,6 @@ export default function Home() {
                         href={createProductUrl(deal.id, deal.slug, deal.name)}
                         className="block"
                       >
-                        {/* NYTT: Använder ProductImage och relative container */}
                         <div className="h-32 bg-slate-50 relative flex items-center justify-center p-4">
                           <ProductImage
                             src={deal.image_url}
@@ -362,11 +325,11 @@ export default function Home() {
           </div>
         )}
 
-        {/* SÖKRESULTAT */}
-        {searchResults.length > 0 && (
+        {/* SÖKRESULTAT (Visa om vi har resultat ELLER om vi sökt men fick 0 träffar) */}
+        {(searchResults.length > 0 || (queryFromUrl.length > 1 && !loading)) && (
           <div className="space-y-4 max-w-3xl mx-auto animate-fade-in-up">
             <h2 className="text-xl font-bold text-slate-700 mb-4">
-              Sökresultat
+              {searchResults.length > 0 ? `Sökresultat för "${queryFromUrl}"` : `Inga träffar för "${queryFromUrl}"`}
             </h2>
             {searchResults.map((p) => (
               <div
@@ -382,7 +345,6 @@ export default function Home() {
                   )}
                   className="w-16 h-16 bg-slate-50 rounded-lg relative flex-shrink-0"
                 >
-                  {/* NYTT: Använder ProductImage */}
                   <ProductImage
                     src={p.image_url}
                     alt={p.name}
@@ -424,4 +386,13 @@ export default function Home() {
       </main>
     </div>
   );
+}
+
+// Wrapper för Suspense (nödvändigt i app directory när man använder useSearchParams)
+export default function Home() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-50"></div>}>
+      <HomeContent />
+    </Suspense>
+  )
 }

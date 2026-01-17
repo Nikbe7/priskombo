@@ -10,6 +10,7 @@ jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn() } }))
 jest.mock("next/navigation", () => ({ 
   useRouter: () => ({ push: jest.fn() }),
   usePathname: () => "/",
+  useSearchParams: () => ({ get: () => "" }),
 }));
 
 // 2. Mocka fetch
