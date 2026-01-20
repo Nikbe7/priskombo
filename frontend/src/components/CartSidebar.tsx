@@ -3,7 +3,7 @@ import { useCart } from "@/context/CartContext";
 import Link from "next/link";
 import { useEffect } from "react";
 import { X, Trash2, ShoppingBag } from "lucide-react";
-import { usePathname } from "next/navigation"; // <--- 1. NY IMPORT
+import { usePathname } from "next/navigation";
 
 export default function CartSidebar() {
   const {
@@ -15,7 +15,6 @@ export default function CartSidebar() {
     cartTotal,
   } = useCart();
 
-  // --- 2. NY LOGIK HÄR ---
   const pathname = usePathname();
   const isOptimizePage = pathname === "/optimize";
 
@@ -28,7 +27,7 @@ export default function CartSidebar() {
     return () => window.removeEventListener("keydown", handleEsc);
   }, [setIsCartOpen]);
 
-  // --- "PUSH" EFFEKT (Din befintliga kod, rör ej) ---
+  // "PUSH" EFFEKT - Endast desktop
   useEffect(() => {
     const adjustBodyPadding = () => {
       if (window.innerWidth >= 640) {
@@ -40,6 +39,8 @@ export default function CartSidebar() {
         }
       } else {
         document.body.style.paddingRight = "0px";
+        // Förhindra scroll på body när menyn är öppen på mobil
+        document.body.style.overflow = isCartOpen ? "hidden" : "auto";
       }
     };
 
@@ -49,19 +50,28 @@ export default function CartSidebar() {
     return () => {
       window.removeEventListener("resize", adjustBodyPadding);
       document.body.style.paddingRight = "0px";
+      document.body.style.overflow = "auto";
     };
   }, [isCartOpen]);
 
   return (
     <>
+      {/* Mörk bakgrund (backdrop) endast på mobil */}
+      <div 
+        className={`fixed inset-0 bg-black/50 z-[90] sm:hidden transition-opacity duration-300 ${
+            isCartOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
+        onClick={() => setIsCartOpen(false)}
+      />
+
       <aside
-        className={`fixed top-0 right-0 h-full w-full sm:w-[450px] bg-white z-[100] shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col border-l border-gray-100 ${
+        className={`fixed top-0 right-0 h-full w-[85%] sm:w-[450px] bg-white z-[100] shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col border-l border-gray-100 ${
           isCartOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
         {/* Header */}
-        <div className="p-5 border-b flex justify-between items-center bg-gray-50">
-          <h2 className="text-xl font-bold flex items-center gap-2">
+        <div className="p-4 sm:p-5 border-b flex justify-between items-center bg-gray-50 mt-safe-top"> {/* mt-safe-top för iOS notch */}
+          <h2 className="text-lg sm:text-xl font-bold flex items-center gap-2">
             <ShoppingBag className="w-5 h-5" /> Din Inköpslista
             <span className="bg-black text-white text-xs px-2 py-0.5 rounded-full">
               {basket.length}
@@ -78,7 +88,7 @@ export default function CartSidebar() {
         </div>
 
         {/* Innehåll */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
           {basket.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-gray-400 space-y-4">
               <ShoppingBag className="w-16 h-16 opacity-20" />
@@ -96,9 +106,9 @@ export default function CartSidebar() {
                const minPrice = hasPrices ? Math.min(...item.prices.map((x) => x.price)) : 0;
                
                return (
-                <div key={item.id} className="flex gap-4 items-start border-b pb-4 last:border-0 animate-in slide-in-from-right-4">
+                <div key={item.id} className="flex gap-3 sm:gap-4 items-start border-b pb-4 last:border-0 animate-in slide-in-from-right-4">
                   {/* Bild */}
-                  <div className="w-20 h-20 bg-gray-50 rounded-lg border flex-shrink-0 relative overflow-hidden">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-50 rounded-lg border flex-shrink-0 relative overflow-hidden">
                     {item.image_url ? (
                       <img
                         src={item.image_url}
@@ -113,11 +123,12 @@ export default function CartSidebar() {
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-start">
-                      <h3 className="font-medium text-sm truncate pr-2 text-gray-900" title={item.name}>
+                      <h3 className="font-medium text-sm truncate pr-2 text-gray-900 line-clamp-2 whitespace-normal" title={item.name}>
                         {item.slug ? (
                           <Link 
                             href={`/${item.slug}`} 
                             className="hover:text-blue-600 hover:underline transition-colors"
+                            onClick={() => setIsCartOpen(false)}
                           >
                             {item.name}
                           </Link>
@@ -127,7 +138,7 @@ export default function CartSidebar() {
                       </h3>
                       <button 
                         onClick={() => removeFromBasket(item.id)}
-                        className="text-gray-400 hover:text-red-600 transition"
+                        className="text-gray-400 hover:text-red-600 transition p-1"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -166,17 +177,17 @@ export default function CartSidebar() {
 
         {/* Footer */}
         {basket.length > 0 && (
-          <div className="p-5 border-t bg-gray-50 space-y-4">
+          <div className="p-4 sm:p-5 border-t bg-gray-50 space-y-4 mb-safe-bottom">
             <div className="flex justify-between items-center text-lg font-medium text-gray-900">
                <span>Totalt (varor):</span>
                <span>{cartTotal} kr</span>
             </div>
             
-            {/* --- 3. DÖLJ KNAPPEN OM VI ÄR PÅ OPTIMIZE --- */}
             {!isOptimizePage && (
                 <Link 
                     href="/optimize"
-                    className="block w-full py-4 bg-black text-white text-center font-bold rounded-lg hover:bg-gray-800 transition shadow-lg hover:shadow-xl transform active:scale-[0.98]"
+                    onClick={() => setIsCartOpen(false)}
+                    className="block w-full py-3.5 sm:py-4 bg-black text-white text-center font-bold rounded-lg hover:bg-gray-800 transition shadow-lg hover:shadow-xl transform active:scale-[0.98]"
                 >
                     Hitta bästa kombon ➔
                 </Link>

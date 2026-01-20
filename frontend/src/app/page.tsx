@@ -113,37 +113,39 @@ function HomeContent() {
 
   return (
     <div className="min-h-screen">
-      {/* HERO - Utan sökfält nu */}
-      <section className="relative bg-gradient-to-b from-blue-50 to-white pt-32 pb-10 px-6 text-center">
+      {/* HERO - Ännu tajtare padding bottom (pb-2 på mobil) */}
+      <section className="relative bg-gradient-to-b from-blue-50 to-white pt-32 pb-2 md:pt-28 md:pb-8 px-4 text-center">
         <div className="max-w-4xl mx-auto relative z-10">
-          <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight mb-4 leading-tight">
+          <h1 className="text-2xl md:text-5xl font-extrabold text-slate-900 tracking-tight mb-2 md:mb-3 leading-tight">
             Spara pengar på <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
               varje köp
             </span>
           </h1>
-          <p className="text-base text-slate-500 mb-8 max-w-2xl mx-auto">
+          {/* Minskad marginal (mb-2) */}
+          <p className="text-xs md:text-base text-slate-500 mb-2 max-w-xl mx-auto leading-relaxed px-2">
             Sök, kombinera och optimera. Vi hittar den billigaste lösningen för
             hela din inköpslista.
           </p>
           
-          {/* Laddningsindikator om URL:en har en sökning men vi laddar */}
+          {/* Laddningsindikator */}
           {loading && (
-             <div className="max-w-md mx-auto mt-8 p-4 bg-white rounded-xl shadow-sm border border-slate-100 flex items-center gap-3 animate-pulse">
-                <div className="w-6 h-6 bg-gray-200 rounded-full"></div>
-                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+             <div className="max-w-md mx-auto mt-4 p-3 bg-white rounded-xl shadow-sm border border-slate-100 flex items-center gap-3 animate-pulse">
+                <div className="w-5 h-5 bg-gray-200 rounded-full"></div>
+                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
              </div>
           )}
         </div>
       </section>
 
-      <main className="p-4 md:p-8 max-w-[1600px] mx-auto">
-        {/* START-VY (Visa bara om ingen sökning pågår) */}
+      {/* Minskad top-padding på main (py-2 på mobil) */}
+      <main className="px-4 py-2 md:p-8 max-w-[1600px] mx-auto">
+        {/* START-VY */}
         {searchResults.length === 0 && !loading && queryFromUrl.length === 0 && (
-          <div className="space-y-16 animate-fade-in-up">
-            {/* KATEGORI-GRID ... (Samma kod som förut) */}
+          <div className="space-y-8 md:space-y-16 animate-fade-in-up">
+            {/* KATEGORI-GRID */}
             <section>
-              <h2 className="text-xl font-bold mb-6 text-slate-800 flex items-center gap-2">
+              <h2 className="text-lg md:text-xl font-bold mb-3 md:mb-6 text-slate-800 flex items-center gap-2">
                 <span className="w-1 h-6 bg-blue-600 rounded-full"></span>
                 Utforska kategorier
               </h2>
@@ -152,12 +154,12 @@ function HomeContent() {
                 {/* 1. KAMPANJER */}
                 <Link
                   href="/deals"
-                  className="relative group bg-gradient-to-br from-red-500 to-rose-600 rounded-xl p-3 shadow-md shadow-red-100 hover:shadow-lg hover:scale-[1.02] transition-all duration-300 flex flex-col items-center justify-center h-28 text-white overflow-hidden"
+                  className="relative group bg-gradient-to-br from-red-500 to-rose-600 rounded-xl p-3 shadow-md shadow-red-100 hover:shadow-lg hover:scale-[1.02] transition-all duration-300 flex flex-col items-center justify-center h-24 md:h-28 text-white overflow-hidden"
                 >
-                  <div className="text-3xl mb-1 transform group-hover:scale-110 transition duration-300">
+                  <div className="text-2xl md:text-3xl mb-1 transform group-hover:scale-110 transition duration-300">
                     🔥
                   </div>
-                  <h3 className="text-sm font-bold">Kampanjer</h3>
+                  <h3 className="text-xs md:text-sm font-bold">Kampanjer</h3>
                   <p className="opacity-90 text-[10px] font-medium uppercase tracking-wide">
                     Fynda nu
                   </p>
@@ -174,7 +176,7 @@ function HomeContent() {
                       onClick={() =>
                         !isComingSoon && router.push(`/${root.slug}`)
                       }
-                      className={`relative group bg-white rounded-xl border border-slate-100 shadow-sm hover:shadow-md hover:border-blue-300 transition-all duration-300 h-28 flex flex-col items-center justify-center cursor-pointer overflow-visible ${
+                      className={`relative group bg-white rounded-xl border border-slate-100 shadow-sm hover:shadow-md hover:border-blue-300 transition-all duration-300 h-24 md:h-28 flex flex-col items-center justify-center cursor-pointer overflow-visible ${
                         isComingSoon
                           ? "opacity-60 cursor-default bg-slate-50"
                           : ""
@@ -185,7 +187,7 @@ function HomeContent() {
                           !isComingSoon ? "hover:-translate-y-1" : ""
                         }`}
                       >
-                        <div className="text-2xl mb-2 text-slate-400 peer-hover:text-slate-500 transition-colors">
+                        <div className="text-xl md:text-2xl mb-2 text-slate-400 peer-hover:text-slate-500 transition-colors">
                           📦
                         </div>
                         <h3 className="font-bold text-slate-700 text-xs md:text-sm text-center px-1 leading-tight group-hover:text-blue-700">
@@ -201,8 +203,8 @@ function HomeContent() {
                       {!isComingSoon && (
                         <div
                           className="absolute inset-x-0 top-full mt-1 bg-white/95 backdrop-blur-md rounded-xl shadow-xl border border-blue-100 z-50 flex flex-col 
-                                                opacity-0 invisible peer-hover:opacity-100 peer-hover:visible hover:opacity-100 hover:visible 
-                                                transition-all duration-200 origin-top transform scale-95 peer-hover:scale-100 hover:scale-100"
+                                          opacity-0 invisible peer-hover:opacity-100 peer-hover:visible hover:opacity-100 hover:visible 
+                                          transition-all duration-200 origin-top transform scale-95 peer-hover:scale-100 hover:scale-100"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <div
@@ -236,17 +238,17 @@ function HomeContent() {
               </div>
             </section>
 
-            {/* DEALS ... (Samma kod) */}
+            {/* DEALS */}
             {homeDeals.length > 0 && (
-              <section className="pt-8 border-t border-slate-100">
-                <div className="flex justify-between items-end mb-6">
-                  <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+              <section className="pt-6 md:pt-8 border-t border-slate-100">
+                <div className="flex justify-between items-end mb-4 md:mb-6">
+                  <h2 className="text-lg md:text-xl font-bold text-slate-800 flex items-center gap-2">
                     <span className="w-1 h-6 bg-red-500 rounded-full"></span>
                     Heta Deals just nu
                   </h2>
                   <Link
                     href="/deals"
-                    className="text-blue-600 text-sm font-bold hover:underline"
+                    className="text-blue-600 text-xs md:text-sm font-bold hover:underline"
                   >
                     Se alla deals →
                   </Link>
@@ -325,16 +327,16 @@ function HomeContent() {
           </div>
         )}
 
-        {/* SÖKRESULTAT (Visa om vi har resultat ELLER om vi sökt men fick 0 träffar) */}
+        {/* SÖKRESULTAT */}
         {(searchResults.length > 0 || (queryFromUrl.length > 1 && !loading)) && (
-          <div className="space-y-4 max-w-3xl mx-auto animate-fade-in-up">
-            <h2 className="text-xl font-bold text-slate-700 mb-4">
+          <div className="space-y-4 max-w-3xl mx-auto animate-fade-in-up pt-4">
+            <h2 className="text-lg md:text-xl font-bold text-slate-700 mb-4">
               {searchResults.length > 0 ? `Sökresultat för "${queryFromUrl}"` : `Inga träffar för "${queryFromUrl}"`}
             </h2>
             {searchResults.map((p) => (
               <div
                 key={p.id}
-                className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex gap-5 items-center hover:shadow-md transition group"
+                className="bg-white p-3 md:p-4 rounded-xl shadow-sm border border-slate-100 flex gap-3 md:gap-5 items-center hover:shadow-md transition group"
               >
                 <Link
                   href={createProductUrl(
@@ -343,13 +345,13 @@ function HomeContent() {
                     p.name,
                     p.category?.slug
                   )}
-                  className="w-16 h-16 bg-slate-50 rounded-lg relative flex-shrink-0"
+                  className="w-12 h-12 md:w-16 md:h-16 bg-slate-50 rounded-lg relative flex-shrink-0"
                 >
                   <ProductImage
                     src={p.image_url}
                     alt={p.name}
                     fill
-                    className="object-contain mix-blend-multiply p-2 group-hover:scale-105 transition"
+                    className="object-contain mix-blend-multiply p-1 md:p-2 group-hover:scale-105 transition"
                   />
                 </Link>
                 <div className="flex-1 min-w-0">
@@ -362,11 +364,11 @@ function HomeContent() {
                     )}
                     className="block"
                   >
-                    <h3 className="font-bold text-slate-800 text-base hover:text-blue-600 truncate transition">
+                    <h3 className="font-bold text-slate-800 text-sm md:text-base hover:text-blue-600 truncate transition">
                       {p.name}
                     </h3>
                   </Link>
-                  <p className="text-blue-600 font-bold mt-1 text-sm">
+                  <p className="text-blue-600 font-bold mt-0.5 md:mt-1 text-xs md:text-sm">
                     Från {Math.min(...p.prices.map((x) => x.price))} kr
                   </p>
                 </div>
@@ -375,7 +377,7 @@ function HomeContent() {
                     addToBasket(p);
                     toast.success(`${p.name} har lagts till i listan!`);
                   }}
-                  className="bg-blue-600 text-white px-4 py-1.5 rounded-full font-bold hover:bg-blue-700 transition shadow-md hover:shadow-lg text-sm"
+                  className="bg-blue-600 text-white px-3 py-1 md:px-4 md:py-1.5 rounded-full font-bold hover:bg-blue-700 transition shadow-md hover:shadow-lg text-xs md:text-sm whitespace-nowrap"
                 >
                   + Lägg till
                 </button>
@@ -388,7 +390,7 @@ function HomeContent() {
   );
 }
 
-// Wrapper för Suspense (nödvändigt i app directory när man använder useSearchParams)
+// Wrapper för Suspense
 export default function Home() {
   return (
     <Suspense fallback={<div className="min-h-screen bg-slate-50"></div>}>

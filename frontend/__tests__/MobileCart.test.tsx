@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import MobileCart from '@/components/MobileCart';
+import CartSidebar from '@/components/CartSidebar'; // Importera CartSidebar
 import { CartProvider, useCart } from '@/context/CartContext';
 
 const TestAddToCart = () => {
@@ -46,36 +47,42 @@ describe('MobileCart', () => {
     expect(screen.queryByText(/Visa listan/i)).not.toBeInTheDocument();
   });
 
-  it('öppnas automatiskt vid köp, kan stängas och öppnas igen', () => {
+  it('öppnas automatiskt vid köp, kan stängas och öppnas igen', async () => {
     render(
       <CartProvider>
         <TestAddToCart />
         <MobileCart />
+        <CartSidebar /> {/* Lägg till CartSidebar */}
       </CartProvider>
     );
 
     // 1. Lägg till vara -> Korgen öppnas AUTOMATISKT
     fireEvent.click(screen.getByText('Lägg till vara'));
     
-    // Verifiera att korgen är öppen direkt (vi behöver inte klicka på "Visa listan")
-    expect(screen.getByText(/Din Inköpslista/i)).toBeInTheDocument();
+    // Verifiera att korgen är öppen direkt
+    await waitFor(() => {
+      expect(screen.getByText(/Din Inköpslista/i)).toBeInTheDocument();
+    });
     expect(screen.getByText('Testprodukt')).toBeInTheDocument();
     
     // Knappen "Visa listan" ska INTE synas nu (eftersom korgen är öppen)
     expect(screen.queryByText(/Visa listan/i)).not.toBeInTheDocument();
 
     // 2. Stäng korgen
-    // Hitta alla kryss (header + produkt) och klicka på det första (Headern)
-    const closeBtns = screen.getAllByText('✕');
-    fireEvent.click(closeBtns[0]);
+    // Hitta stäng-knappen i headern och klicka på den
+    fireEvent.click(screen.getByRole('button', { name: /Stäng/i }));
 
-    // 3. Nu ska korgen vara stängd och knappen synlig igen
-    expect(screen.queryByText('Din Inköpslista')).not.toBeInTheDocument();
-    expect(screen.getByText(/Visa listan/i)).toBeInTheDocument();
+    // 3. Nu ska korgen vara stängd och knappen synlig igen.
+    // Vi väntar på att "Visa listan" ska dyka upp, vilket bekräftar att isCartOpen är false.
+    await waitFor(() => {
+      expect(screen.getByText(/Visa listan/i)).toBeInTheDocument();
+    });
     expect(screen.getByText("1 st")).toBeInTheDocument();
 
     // 4. Öppna igen manuellt
     fireEvent.click(screen.getByText(/Visa listan/i));
-    expect(screen.getByText(/Din Inköpslista/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/Din Inköpslista/i)).toBeInTheDocument();
+    });
   });
 });

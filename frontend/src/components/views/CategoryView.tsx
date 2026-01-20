@@ -22,19 +22,18 @@ const SubCategoryLinks = ({
   if (subCategories.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-3 mb-8">
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-3 mb-6 md:mb-8">
       {subCategories.map((sub: any) => (
         <Link
           key={sub.id}
-          // Bygg vidare på URL:en: /nuvarande-kategori/underkategori
           href={`/${currentSlug}/${sub.slug}`}
           className="group"
         >
-          <div className="bg-white p-3 rounded-lg shadow-sm border border-slate-100 hover:border-blue-300 hover:shadow-md transition text-center flex flex-col items-center justify-center h-full">
-            <span className="text-xl mb-1 grayscale group-hover:grayscale-0 transition">
+          <div className="bg-white p-2 md:p-3 rounded-lg shadow-sm border border-slate-100 hover:border-blue-300 hover:shadow-md transition text-center flex flex-col items-center justify-center h-full">
+            <span className="text-lg md:text-xl mb-1 grayscale group-hover:grayscale-0 transition">
               📦
             </span>
-            <span className="font-bold text-slate-700 text-xs group-hover:text-blue-600 w-full truncate px-1">
+            <span className="font-bold text-slate-700 text-[10px] md:text-xs group-hover:text-blue-600 w-full truncate px-1">
               {sub.name}
             </span>
           </div>
@@ -50,7 +49,6 @@ export default function CategoryView() {
   const params = useParams();
   const slugPath = params.slug as string[];
 
-  // Hämta sista delen av URL:en för att veta vilken kategori vi är på
   const currentSlug = slugPath ? slugPath[slugPath.length - 1] : "";
   const parentSlug =
     slugPath && slugPath.length > 1 ? slugPath[slugPath.length - 2] : null;
@@ -59,17 +57,14 @@ export default function CategoryView() {
   const searchParams = useSearchParams();
   const { addToBasket } = useCart();
 
-  // URL Params
   const currentSort = searchParams.get("sort") || "popularity";
   const currentSearch = searchParams.get("search") || "";
 
-  // Data state
   const [categoryInfo, setCategoryInfo] = useState<any>(null);
   const [parentCategory, setParentCategory] = useState<any>(null);
   const [subCategories, setSubCategories] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
 
-  // Loading & Pagination State
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
@@ -77,9 +72,6 @@ export default function CategoryView() {
   const [totalCount, setTotalCount] = useState(0);
 
   const LIMIT = 50;
-
-  const [searchTerm, setSearchTerm] = useState(currentSearch);
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
 
   const observer = useRef<IntersectionObserver | null>(null);
 
@@ -99,24 +91,6 @@ export default function CategoryView() {
     [loadingMore, hasMore]
   );
 
-  // 1. Debounce Sökning
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      if (searchTerm !== currentSearch) {
-        const newParams = new URLSearchParams(searchParams.toString());
-        if (searchTerm) newParams.set("search", searchTerm);
-        else newParams.delete("search");
-
-        // Vi måste veta grund-URL:en här
-        if (slugPath) {
-          router.replace(`/${slugPath.join("/")}?${newParams.toString()}`);
-        }
-      }
-    }, 500);
-    return () => clearTimeout(handler);
-  }, [searchTerm]);
-
-  // 2. Ladda Kategori-info
   useEffect(() => {
     if (!currentSlug) return;
 
@@ -166,7 +140,6 @@ export default function CategoryView() {
     fetchCategoryStructure();
   }, [currentSlug]);
 
-  // 3. Ladda Produkter
   useEffect(() => {
     if (!categoryInfo) return;
 
@@ -238,23 +211,13 @@ export default function CategoryView() {
     return (
       <div className="min-h-screen bg-gray-50 pt-28 pb-32 px-4 md:px-8 font-sans">
         <div className="max-w-7xl mx-auto">
-          {/* Fake Header Skeleton */}
           <div className="mb-8 space-y-3">
             <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
             <div className="h-10 w-64 bg-gray-200 rounded animate-pulse" />
           </div>
-
           <div className="flex flex-col lg:flex-row gap-8">
-            {/* Fake Sidebar */}
-            <aside className="w-full lg:w-64 flex-shrink-0 hidden md:block space-y-8">
-              <div className="h-10 bg-gray-200 rounded animate-pulse" />
-              <div className="h-20 bg-gray-200 rounded animate-pulse" />
-            </aside>
-
-            {/* Fake Product Grid */}
             <div className="flex-1">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {/* Visa 6 st skeletons */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
                 {[...Array(6)].map((_, i) => (
                   <ProductCardSkeleton key={i} />
                 ))}
@@ -266,7 +229,6 @@ export default function CategoryView() {
     );
   }
 
-  // Om kategorin inte finns (efter laddning)
   if (!categoryInfo)
     return (
       <div className="min-h-screen flex items-center justify-center pt-20">
@@ -275,11 +237,12 @@ export default function CategoryView() {
     );
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-28 pb-32 px-4 md:px-8 font-sans">
+    // Mobilanpassning: mindre padding (px-3) och pt-28 för att passa under navbar
+    <div className="min-h-screen bg-gray-50 pt-32 pb-24 px-3 md:px-8 font-sans">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <div className="text-sm text-gray-500 mb-2 flex items-center gap-2">
+        <div className="mb-6 md:mb-8">
+          <div className="text-xs md:text-sm text-gray-500 mb-2 flex flex-wrap items-center gap-1 md:gap-2">
             <Link href="/" className="hover:text-blue-600">
               Start
             </Link>
@@ -300,12 +263,28 @@ export default function CategoryView() {
             </span>
           </div>
 
-          <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-2">
-            {categoryInfo.name}
-          </h1>
-          <p className="text-gray-500">
-            {products.length} / {totalCount} produkter visade
-          </p>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-2">
+            <div>
+                <h1 className="text-2xl md:text-4xl font-extrabold text-gray-900 leading-tight">
+                    {categoryInfo.name}
+                </h1>
+                <p className="text-xs md:text-sm text-gray-500 mt-1">
+                    {products.length} / {totalCount} produkter
+                </p>
+            </div>
+            
+            <select
+                value={currentSort}
+                onChange={(e) => updateParams({ sort: e.target.value })}
+                className="w-full md:w-auto p-2 rounded-lg border border-gray-300 bg-white text-sm font-medium focus:border-blue-500 outline-none cursor-pointer shadow-sm"
+            >
+                <option value="popularity">Populärast</option>
+                <option value="price_asc">Pris (Lågt - Högt)</option>
+                <option value="price_desc">Pris (Högt - Lågt)</option>
+                <option value="rating_desc">Betyg</option>
+                <option value="name_asc">Namn (A-Ö)</option>
+            </select>
+          </div>
         </div>
 
         <SubCategoryLinks
@@ -314,34 +293,20 @@ export default function CategoryView() {
         />
 
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* PRODUKTLISTA */}
           <div className="flex-1">
-            <div className="flex justify-end mb-6">
-              <select
-                value={currentSort}
-                onChange={(e) => updateParams({ sort: e.target.value })}
-                className="p-2 rounded-lg border border-gray-300 bg-white text-sm font-medium focus:border-blue-500 outline-none cursor-pointer"
-              >
-                <option value="popularity">Populärast</option>
-                <option value="price_asc">Pris (Lågt - Högt)</option>
-                <option value="price_desc">Pris (Högt - Lågt)</option>
-                <option value="rating_desc">Betyg</option>
-                <option value="name_asc">Namn (A-Ö)</option>
-              </select>
-            </div>
-
             {products.length === 0 && !loadingMore ? (
               <div className="text-center py-20 bg-white rounded-xl border border-dashed border-gray-300">
                 <p className="text-gray-500">Inga produkter hittades.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              // Mobil: 2 kolumner (grid-cols-2), Desktop: 3-4 kolumner
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
                 {products.map((p: any, index: number) => {
                   const minPrice =
                     p.prices && p.prices.length > 0
                       ? Math.min(...p.prices.map((x: any) => x.price))
                       : 0;
-                  // Vi skickar med category slug här!
+                  
                   const productUrl = createProductUrl(
                     p.id,
                     p.slug,
@@ -350,32 +315,31 @@ export default function CategoryView() {
                   );
 
                   const content = (
-                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col hover:shadow-md transition group h-full">
-                      {/* Länk runt hela kortet eller delar av det */}
+                    <div className="bg-white p-3 md:p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col hover:shadow-md transition group h-full">
                       <Link href={productUrl} className="block relative flex-1">
-                        <div className="h-48 bg-gray-50 rounded-lg flex items-center justify-center p-4 mb-4 relative overflow-hidden">
+                        <div className="h-32 md:h-48 bg-gray-50 rounded-lg flex items-center justify-center p-2 md:p-4 mb-3 md:mb-4 relative overflow-hidden">
                           <ProductImage
                             src={p.image_url}
                             alt={p.name}
                             className="max-h-full object-contain mix-blend-multiply group-hover:scale-105 transition duration-300"
                           />
                           {p.rating > 0 && (
-                            <span className="absolute bottom-2 left-2 bg-white/90 px-2 py-1 rounded text-xs font-bold text-yellow-600 shadow-sm flex items-center gap-1">
+                            <span className="absolute bottom-1 left-1 md:bottom-2 md:left-2 bg-white/90 px-1.5 py-0.5 md:px-2 md:py-1 rounded text-[10px] md:text-xs font-bold text-yellow-600 shadow-sm flex items-center gap-1">
                               ⭐ {p.rating}
                             </span>
                           )}
                         </div>
-                        <h3 className="font-bold text-gray-800 text-base leading-snug mb-2 group-hover:text-blue-600 line-clamp-2">
+                        <h3 className="font-bold text-gray-800 text-xs md:text-sm leading-snug mb-1 md:mb-2 group-hover:text-blue-600 line-clamp-2 min-h-[2.5em]">
                           {p.name}
                         </h3>
                       </Link>
 
-                      <div className="mt-auto pt-4 border-t border-gray-50 flex justify-between items-center">
+                      <div className="mt-auto pt-2 md:pt-4 border-t border-gray-50 flex justify-between items-end">
                         <div>
-                          <p className="text-blue-600 font-extrabold text-lg">
+                          <p className="text-blue-600 font-extrabold text-sm md:text-lg">
                             {minPrice} kr
                           </p>
-                          <p className="text-xs text-gray-400">
+                          <p className="text-[10px] md:text-xs text-gray-400">
                             {p.prices?.length || 0} butiker
                           </p>
                         </div>
@@ -384,7 +348,7 @@ export default function CategoryView() {
                             addToBasket(p);
                             toast.success(`${p.name} har lagts till i listan!`);
                           }}
-                          className="bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white w-10 h-10 rounded-full flex items-center justify-center transition font-bold shadow-sm"
+                          className="bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center transition font-bold shadow-sm"
                         >
                           +
                         </button>
@@ -406,8 +370,8 @@ export default function CategoryView() {
             )}
 
             {loadingMore && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-                {[...Array(3)].map((_, i) => (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 mt-4">
+                {[...Array(4)].map((_, i) => (
                   <ProductCardSkeleton key={`loading-${i}`} />
                 ))}
               </div>
