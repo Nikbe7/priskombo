@@ -85,4 +85,33 @@ describe('CartSidebar', () => {
     const optimizeLink = screen.queryByRole('link', { name: /Hitta bästa kombon/i });
     expect(optimizeLink).not.toBeInTheDocument();
   });
+
+  it('länkar till produktsidan från produktnamn och bild', () => {
+    render(
+      <CartProvider>
+        <TestAddToCart />
+        <CartSidebar />
+      </CartProvider>
+    );
+
+    fireEvent.click(screen.getByText('Lägg till vara'));
+
+    // Både bildlänken och textlänken har samma "accessible name" från alt-text och textinnehåll.
+    // Vi använder getAllByRole och verifierar båda.
+    const links = screen.getAllByRole('link', { name: /Testprodukt/i });
+    expect(links).toHaveLength(2);
+
+    // Verifiera båda länkarna
+    links.forEach(link => {
+      expect(link).toHaveAttribute('href', '/test-produkt-slug');
+    });
+
+    // Säkerställ att en av länkarna innehåller bilden
+    const imageLink = links.find(link => link.querySelector('img[alt="Testprodukt"]') !== null);
+    expect(imageLink).toBeInTheDocument();
+
+    // Säkerställ att en av länkarna innehåller texten
+    const textLink = links.find(link => link.textContent === 'Testprodukt');
+    expect(textLink).toBeInTheDocument();
+  });
 });

@@ -108,17 +108,33 @@ export default function CartSidebar() {
                return (
                 <div key={item.id} className="flex gap-3 sm:gap-4 items-start border-b pb-4 last:border-0 animate-in slide-in-from-right-4">
                   {/* Bild */}
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-50 rounded-lg border flex-shrink-0 relative overflow-hidden">
-                    {item.image_url ? (
-                      <img
-                        src={item.image_url}
-                        alt={item.name}
-                        className="object-contain w-full h-full p-2 mix-blend-multiply"
-                      />
-                    ) : (
-                      <span className="text-2xl absolute inset-0 flex items-center justify-center">📦</span>
-                    )}
-                  </div>
+                  {item.slug ? (
+                    <Link href={`/${item.slug}`} onClick={() => setIsCartOpen(false)}>
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-50 rounded-lg border flex-shrink-0 relative overflow-hidden">
+                        {item.image_url ? (
+                          <img
+                            src={item.image_url}
+                            alt={item.name}
+                            className="object-contain w-full h-full p-2 mix-blend-multiply"
+                          />
+                        ) : (
+                          <span className="text-2xl absolute inset-0 flex items-center justify-center">📦</span>
+                        )}
+                      </div>
+                    </Link>
+                  ) : (
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-50 rounded-lg border flex-shrink-0 relative overflow-hidden">
+                      {item.image_url ? (
+                        <img
+                          src={item.image_url}
+                          alt={item.name}
+                          className="object-contain w-full h-full p-2 mix-blend-multiply"
+                        />
+                      ) : (
+                        <span className="text-2xl absolute inset-0 flex items-center justify-center">📦</span>
+                      )}
+                    </div>
+                  )}
                   
                   {/* Info */}
                   <div className="flex-1 min-w-0">
