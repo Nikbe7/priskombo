@@ -15,28 +15,28 @@ import { toast } from "sonner";
 const SubCategoryLinks = ({
   currentSlug,
   subCategories,
+  activeSlug,
 }: {
   currentSlug: string;
   subCategories: any[];
+  activeSlug: string;
 }) => {
   if (subCategories.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-3 mb-6 md:mb-8">
+    <div className="space-y-2">
+      <h3 className="font-bold text-lg mb-2">Underkategorier</h3>
       {subCategories.map((sub: any) => (
         <Link
           key={sub.id}
           href={`/${currentSlug}/${sub.slug}`}
-          className="group"
+          className={`block p-2 rounded-md text-sm transition-colors ${
+            activeSlug === sub.slug
+              ? "bg-blue-100 text-blue-700 font-bold"
+              : "hover:bg-slate-100 text-slate-600"
+          }`}
         >
-          <div className="bg-white p-2 md:p-3 rounded-lg shadow-sm border border-slate-100 hover:border-blue-300 hover:shadow-md transition text-center flex flex-col items-center justify-center h-full">
-            <span className="text-lg md:text-xl mb-1 grayscale group-hover:grayscale-0 transition">
-              📦
-            </span>
-            <span className="font-bold text-slate-700 text-[10px] md:text-xs group-hover:text-blue-600 w-full truncate px-1">
-              {sub.name}
-            </span>
-          </div>
+          {sub.name}
         </Link>
       ))}
     </div>
@@ -209,7 +209,7 @@ export default function CategoryView() {
 
   if (loadingInitial) {
     return (
-      <div className="min-h-screen bg-gray-50 pt-28 pb-32 px-4 md:px-8 font-sans">
+      <div className="min-h-screen bg-white pt-8 pb-32 px-4 md:px-8 font-sans">
         <div className="max-w-7xl mx-auto">
           <div className="mb-8 space-y-3">
             <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
@@ -237,11 +237,11 @@ export default function CategoryView() {
     );
 
   return (
-    // Mobilanpassning: mindre padding (px-3) och pt-28 för att passa under navbar
-    <div className="min-h-screen bg-gray-50 pt-32 pb-24 px-3 md:px-8 font-sans">
+    // Mobilanpassning
+    <div className="min-h-screen bg-white pt-8 pb-24 px-3 md:px-8 font-sans">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-6 md:mb-8">
+        <div className="mb-6">
           <div className="text-xs md:text-sm text-gray-500 mb-2 flex flex-wrap items-center gap-1 md:gap-2">
             <Link href="/" className="hover:text-blue-600">
               Start
@@ -263,44 +263,109 @@ export default function CategoryView() {
             </span>
           </div>
 
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-2">
-            <div>
-                <h1 className="text-2xl md:text-4xl font-extrabold text-gray-900 leading-tight">
-                    {categoryInfo.name}
-                </h1>
-                <p className="text-xs md:text-sm text-gray-500 mt-1">
-                    {products.length} / {totalCount} produkter
-                </p>
-            </div>
-            
-            <select
-                value={currentSort}
-                onChange={(e) => updateParams({ sort: e.target.value })}
-                className="w-full md:w-auto p-2 rounded-lg border border-gray-300 bg-white text-sm font-medium focus:border-blue-500 outline-none cursor-pointer shadow-sm"
-            >
-                <option value="popularity">Populärast</option>
-                <option value="price_asc">Pris (Lågt - Högt)</option>
-                <option value="price_desc">Pris (Högt - Lågt)</option>
-                <option value="rating_desc">Betyg</option>
-                <option value="name_asc">Namn (A-Ö)</option>
-            </select>
-          </div>
-        </div>
+                              <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
 
-        <SubCategoryLinks
-          currentSlug={categoryInfo.slug}
-          subCategories={subCategories}
-        />
+                    
 
-        <div className="flex flex-col lg:flex-row gap-8">
-          <div className="flex-1">
-            {products.length === 0 && !loadingMore ? (
+                                <div>
+
+                    
+
+                                    <h1 className="text-2xl md:text-4xl font-extrabold text-gray-900 leading-tight">
+
+                    
+
+                                        {categoryInfo.name}
+
+                    
+
+                                    </h1>
+
+                    
+
+                                    <p className="text-xs md:text-sm text-gray-500 mt-1">
+
+                    
+
+                                        {products.length} / {totalCount} produkter
+
+                    
+
+                                    </p>
+
+                    
+
+                                </div>
+
+                    
+
+                                <select
+
+                                    value={currentSort}
+
+                                    onChange={(e) => updateParams({ sort: e.target.value })}
+
+                                    className="w-full md:w-auto p-2 rounded-lg border border-gray-300 bg-white text-sm font-medium focus:border-blue-500 outline-none cursor-pointer shadow-sm"
+
+                                >
+
+                                    <option value="popularity">Populärast</option>
+
+                                    <option value="price_asc">Pris (Lågt - Högt)</option>
+
+                                    <option value="price_desc">Pris (Högt - Lågt)</option>
+
+                                    <option value="rating_desc">Betyg</option>
+
+                                    <option value="name_asc">Namn (A-Ö)</option>
+
+                                </select>
+
+                              </div>
+
+                    
+
+                            </div>
+
+                    
+
+                            <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
+
+                    {/* Left Sidebar: Sub-categories */}
+
+                    <aside className="lg:w-60">
+
+                      <div className="sticky top-24">
+
+                        <SubCategoryLinks
+
+                          currentSlug={parentSlug || categoryInfo.slug}
+
+                          subCategories={subCategories}
+
+                          activeSlug={currentSlug}
+
+                        />
+
+                      </div>
+
+                    </aside>
+
+          
+
+                    {/* Right Content: Products */}
+
+                    <div className="flex-1">
+
+          
+
+                      {products.length === 0 && !loadingMore ? (
               <div className="text-center py-20 bg-white rounded-xl border border-dashed border-gray-300">
                 <p className="text-gray-500">Inga produkter hittades.</p>
               </div>
             ) : (
               // Mobil: 2 kolumner (grid-cols-2), Desktop: 3-4 kolumner
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-">
                 {products.map((p: any, index: number) => {
                   const minPrice =
                     p.prices && p.prices.length > 0

@@ -30,7 +30,7 @@ export default function RootLayout({
             
             <Navbar />
 
-            <div className="flex flex-1 relative"> 
+            <div className="flex flex-1 relative pt-28 lg:pt-20"> 
               
               <div className="flex-1 flex flex-col min-w-0">
                 <main className="flex-1 w-full">

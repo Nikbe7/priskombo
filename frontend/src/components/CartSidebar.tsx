@@ -65,6 +65,7 @@ export default function CartSidebar() {
       />
 
       <aside
+        aria-label="Varukorg"
         className={`fixed top-0 right-0 h-full w-[85%] sm:w-[450px] bg-white z-[100] shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col border-l border-gray-100 ${
           isCartOpen ? "translate-x-0" : "translate-x-full"
         }`}

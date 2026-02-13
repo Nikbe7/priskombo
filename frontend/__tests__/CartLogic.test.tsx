@@ -3,7 +3,6 @@ import "@testing-library/jest-dom";
 import Home from "@/app/page";
 import CartSidebar from "@/components/CartSidebar";
 import { CartProvider } from "@/context/CartContext";
-import { toast } from "sonner";
 
 // 1. Mocka beroenden
 jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
@@ -41,7 +40,7 @@ global.fetch = jest.fn((url: string) => {
             store: "Apotea",
             discount_percent: 20,
             url: "#",
-            prices: [{ price: 100, store: "Apotea", url: "#" }] // Viktigt: prices array!
+            prices: [{ price: 100, store: "Apotea", url: "#" }]
           },
         ]),
     });
@@ -57,13 +56,21 @@ const TestApp = () => (
   </CartProvider>
 );
 
+// Helper för att hitta produktkortets knapp
+const findProductCardButton = async (name: string) => {
+    const productHeading = await screen.findByRole('heading', { name });
+    // Traversera upp till en container som unikt innehåller både produktinfo och knapp
+    const productCardContainer = productHeading.closest('.p-4'); 
+    if (!productCardContainer) {
+        throw new Error(`Kunde inte hitta container för produkt: ${name}`);
+    }
+    return within(productCardContainer).getByRole('button');
+}
+
 describe("Varukorgslogik", () => {
   beforeEach(() => {
-    // Rensa
     window.localStorage.clear();
     jest.clearAllMocks();
-
-    // SPIONERA på setItem (för testet som kollar om det sparas)
     jest.spyOn(window.localStorage, "setItem");
   });
 
@@ -71,114 +78,115 @@ describe("Varukorgslogik", () => {
     render(<TestApp />);
     
     // Vänta på att produkten laddas
-    const productTitle = await screen.findByText("Test Schampo");
-    expect(productTitle).toBeInTheDocument();
+    await screen.findByText("Test Schampo");
 
-    // Hitta "Köp"-knappen (ikonen)
-    const addButtons = screen.getAllByRole("button", { name: "+" });
-    fireEvent.click(addButtons[0]);
+    // Hitta och klicka på "Köp"-knappen
+    const addButton = await findProductCardButton("Test Schampo");
+    fireEvent.click(addButton);
 
-    // Verifiera att korgen öppnas och produkten syns
+    // Verifiera att korgen öppnas och produkten syns inuti den
     await waitFor(() => {
-      expect(screen.getByText("Din Inköpslista")).toBeInTheDocument();
-      // Använd getAllByText eftersom texten finns både på "kortet" och i "korgen"
-      expect(screen.getAllByText("Test Schampo").length).toBeGreaterThan(1);
+      const sidebar = screen.getByLabelText("Varukorg"); // Använd aria-label för robusthet
+      expect(within(sidebar).getByText("Din Inköpslista")).toBeInTheDocument();
+      expect(within(sidebar).getByText("Test Schampo")).toBeInTheDocument();
     });
+
+    // Säkerställ att texten finns på både kort och i sidebar
+    expect(screen.getAllByText("Test Schampo").length).toBeGreaterThan(1);
   });
 
   it("tar bort produkten när man minskar från 1 till 0", async () => {
     render(<TestApp />);
 
-    await waitFor(() => expect(screen.getByText("Test Schampo")).toBeInTheDocument());
-    
-    // Lägg till
-    const addButtons = screen.getAllByRole("button", { name: "+" });
-    fireEvent.click(addButtons[0]);
+    // Lägg till produkten
+    const addButton = await findProductCardButton("Test Schampo");
+    fireEvent.click(addButton);
 
-    // Hitta minus-knappen i sidebaren
-    await waitFor(() => {
-        expect(screen.getAllByText("-").length).toBeGreaterThan(0);
-    });
-    
-    const minusButtons = screen.getAllByText("-");
-    // Klicka på den första vi hittar (troligen den i sidebaren som precis öppnades)
-    fireEvent.click(minusButtons[0]);
+    // Vänta på att sidebaren innehåller produkten
+    const sidebar = screen.getByLabelText("Varukorg");
+    await within(sidebar).findByText("Test Schampo");
 
-    // Verifiera att listan är tom
+    // Hitta minus-knappen INUTI sidebarens produkt-rad
+    const productInCart = within(sidebar).getByText("Test Schampo");
+    const itemContainer = productInCart.closest('div[class*="flex gap"]');
+    if (!itemContainer) throw new Error("Hittade inte produktens container i korgen");
+
+    const minusButton = within(itemContainer).getByRole('button', { name: "-" });
+    fireEvent.click(minusButton);
+
+    // Verifiera att listan nu är tom
     await waitFor(() => {
-      // Använd regex för att vara mer flexibel
-      const emptyMessages = screen.getAllByText(/Listan är tom/i);
-      expect(emptyMessages.length).toBeGreaterThan(0);
+      expect(within(sidebar).getByText(/Listan är tom/i)).toBeInTheDocument();
     });
   });
 
   it("kan öka och minska antal i listan", async () => {
     render(<TestApp />);
 
-    await waitFor(() => expect(screen.getByText("Test Schampo")).toBeInTheDocument());
-    const addButtons = screen.getAllByRole("button", { name: "+" });
-    fireEvent.click(addButtons[0]);
+    // Lägg till produkten
+    const addButton = await findProductCardButton("Test Schampo");
+    fireEvent.click(addButton);
 
-    // Vänta på att UI uppdateras i sidebaren
-    await waitFor(() => expect(screen.getAllByText("+").length).toBeGreaterThan(0));
+    // Vänta på sidebaren och hitta knapparna för produkten
+    const sidebar = screen.getByLabelText("Varukorg");
+    const productInCart = await within(sidebar).findByText("Test Schampo");
+    const itemContainer = productInCart.closest('div[class*="flex gap"]');
+    if (!itemContainer) throw new Error("Hittade inte produktens container i korgen");
 
-    // Hitta knapparna i sidebaren (de ligger sist i DOMen oftast)
-    const allPlus = screen.getAllByText("+");
-    const allMinus = screen.getAllByText("-");
-    const sidebarPlus = allPlus[allPlus.length - 1];
-    const sidebarMinus = allMinus[allMinus.length - 1];
+    const plusButton = within(itemContainer).getByRole('button', { name: "+" });
+    const minusButton = within(itemContainer).getByRole('button', { name: "-" });
 
-    // Klicka plus -> Borde bli 2
-    fireEvent.click(sidebarPlus);
-    
-    // Vänta på att "2" syns (antalet)
-    // Vi kollar efter span-elementet som visar antalet
+    // Öka till 2
+    fireEvent.click(plusButton);
     await waitFor(() => {
-        // Det finns en span som visar antalet. Vi letar efter den.
-        // Eftersom det kan finnas flera "2" på sidan, kollar vi att någon av dem är i sidebar
-        expect(screen.getAllByText("2").length).toBeGreaterThan(0);
-        // Alternativt: Kolla priset med regex
-        expect(screen.getAllByText(/200\s*kr/i).length).toBeGreaterThan(0);
+      expect(within(itemContainer).getByText("2")).toBeInTheDocument();
+      expect(within(itemContainer).getByText(/200\s*kr/i)).toBeInTheDocument();
     });
 
-    // Klicka plus -> Borde bli 3
-    fireEvent.click(sidebarPlus);
-    await waitFor(() => expect(screen.getAllByText(/300\s*kr/i).length).toBeGreaterThan(0));
-
-    // Klicka minus -> Tillbaka till 2
-    fireEvent.click(sidebarMinus);
-    await waitFor(() => expect(screen.getAllByText(/200\s*kr/i).length).toBeGreaterThan(0));
+    // Öka till 3
+    fireEvent.click(plusButton);
+    await waitFor(() => {
+        expect(within(itemContainer).getByText("3")).toBeInTheDocument();
+        expect(within(itemContainer).getByText(/300\s*kr/i)).toBeInTheDocument();
+    });
+    
+    // Minska till 2
+    fireEvent.click(minusButton);
+    await waitFor(() => {
+        expect(within(itemContainer).getByText("2")).toBeInTheDocument();
+        expect(within(itemContainer).getByText(/200\s*kr/i)).toBeInTheDocument();
+    });
   });
 
   it("sparar varukorgen till localStorage och laddar den vid omstart", async () => {
     const { unmount } = render(<TestApp />);
 
-    // 1. Vänta på att produkten laddas och lägg till den
-    await waitFor(() => expect(screen.getByText("Test Schampo")).toBeInTheDocument());
-    const addButtons = screen.getAllByRole("button", { name: "+" });
-    fireEvent.click(addButtons[0]);
+    // 1. Lägg till produkten
+    const addButton = await findProductCardButton("Test Schampo");
+    fireEvent.click(addButton);
 
-    // 2. Verifiera att den lades till (vänta på att korgen uppdateras)
-    await waitFor(() => expect(screen.getAllByText("Test Schampo").length).toBeGreaterThan(1));
-
-    // 3. Verifiera att setItem anropades
+    // 2. Verifiera att den lades till och att setItem anropades
     await waitFor(() => {
         expect(window.localStorage.setItem).toHaveBeenCalledWith(
-        "priskombo_cart",
-        expect.stringContaining("Test Schampo")
+            "priskombo_cart",
+            expect.stringContaining("Test Schampo")
         );
     });
-
-    // 4. Simulera "Refresh"
-    unmount();
     
-    // Rendera på nytt (localStorage mocken behåller datan)
+    // 3. Simulera "Refresh"
+    unmount();
     render(<TestApp />);
 
-    // 5. Verifiera att korgen minns produkten direkt
+    // 4. Verifiera att korgen minns produkten direkt från localStorage
+    const sidebar = screen.getByLabelText("Varukorg");
     await waitFor(() => {
-        const badges = screen.getAllByText("1"); 
-        expect(badges.length).toBeGreaterThan(0);
+        // Hitta den specifika raden för produkten
+        const productInCart = within(sidebar).getByText("Test Schampo");
+        const itemContainer = productInCart.closest('div[class*="flex gap"]');
+        if (!itemContainer) throw new Error("Hittade inte produktens container i korgen");
+
+        // Verifiera antalet *inom* den raden
+        expect(within(itemContainer).getByText("1")).toBeInTheDocument();
     });
   });
 });
