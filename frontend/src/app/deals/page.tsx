@@ -1,10 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import API_URL from "@/lib/config";
 import { useCart } from "@/context/CartContext";
 import { createProductUrl } from "@/lib/utils";
 import { toast } from "sonner";
+import { fetchDeals } from "@/services/deals";
 
 export default function DealsPage() {
   const [deals, setDeals] = useState<any[]>([]);
@@ -12,8 +12,7 @@ export default function DealsPage() {
   const { addToBasket } = useCart();
 
   useEffect(() => {
-    fetch(`${API_URL}/deals?limit=100`)
-      .then((res) => res.json())
+    fetchDeals(100)
       .then((data) => setDeals(data))
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));

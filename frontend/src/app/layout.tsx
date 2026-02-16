@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "@/context/CartContext";
-import CartSidebar from "@/components/CartSidebar";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
-import MobileCart from "@/components/MobileCart";
+import CartSidebar from "@/components/cart/CartSidebar";
+import Navbar from "@/components/layout/Navbar";
+import Footer from "@/components/layout/Footer";
+import MobileCart from "@/components/cart/MobileCart";
 import { BASE_URL } from '@/lib/config';
 import { Toaster } from "sonner";
 

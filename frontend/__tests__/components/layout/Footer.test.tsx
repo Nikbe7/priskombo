@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import Footer from '@/components/Footer';
+import Footer from '@/components/layout/Footer';
 
 describe('Footer', () => {
   it('renderar varumärke och copyright', () => {

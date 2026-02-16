@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import CartSidebar from '@/components/CartSidebar';
+import CartSidebar from '@/components/cart/CartSidebar';
 import { CartProvider, useCart } from '@/context/CartContext';
 import { useEffect } from 'react';
 

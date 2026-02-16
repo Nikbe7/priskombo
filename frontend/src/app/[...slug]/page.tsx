@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import API_URL from "@/lib/config";
+import { fetchProductBySlug } from "@/services/products";
 
 // Importera vyerna
 import ProductView from "@/components/views/ProductView";
@@ -24,22 +24,16 @@ export default function CatchAllPage() {
       setViewType("loading");
       
       try {
-        // 1. Försök hämta som PRODUKT först
-        const res = await fetch(`${API_URL}/products/${currentSlug}`);
+        const data = await fetchProductBySlug(currentSlug);
         
-        if (res.ok) {
-          const data = await res.json();
+        if (data) {
           setProductData(data);
           setViewType("product");
         } else {
-          // 2. Om 404, anta att det är en KATEGORI
-          // Vi låter CategoryView sköta sin egen hämtning/logik precis som förut
-          // för att inte krångla till det, så vi byter bara vy.
           setViewType("category");
         }
       } catch (err) {
         console.error("Fel vid routing:", err);
-        // Fallback till kategori vid nätverksfel eller annat
         setViewType("category");
       }
     };

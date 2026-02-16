@@ -8,6 +8,7 @@ import { CartProvider } from '@/context/CartContext';
 global.fetch = jest.fn((url: string) => {
   if (url.toString().includes('/deals')) {
     return Promise.resolve({
+      ok: true,
       json: () => Promise.resolve([
         {
           id: 1,
@@ -23,7 +24,7 @@ global.fetch = jest.fn((url: string) => {
       ]),
     });
   }
-  return Promise.resolve({ json: () => Promise.resolve([]) });
+  return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
 });
 
 describe('Deals Page', () => {

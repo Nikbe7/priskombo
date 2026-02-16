@@ -3,11 +3,12 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import API_URL from "@/lib/config";
 import { useCart } from "@/context/CartContext";
 import { createProductUrl } from "@/lib/utils";
-import ProductImage from "@/components/ProductImage";
-import ProductCardSkeleton from "@/components/skeletons/ProductCardSkeleton";
+import ProductImage from "@/components/product/ProductImage";
+import ProductCardSkeleton from "@/components/product/ProductCardSkeleton";
+import { fetchCategories } from "@/services/categories";
+import { fetchCategoryProducts } from "@/services/products";
 import { toast } from "sonner";
 import { ArrowLeft, PackageOpen } from "lucide-react";
 
@@ -122,8 +123,7 @@ export default function CategoryView() {
       setTotalCount(0);
 
       try {
-        const catRes = await fetch(`${API_URL}/categories`);
-        const allCategories = await catRes.json();
+        const allCategories = await fetchCategories();
 
         const foundCategory = allCategories.find(
           (c: any) => c.slug === currentSlug
@@ -163,7 +163,7 @@ export default function CategoryView() {
   useEffect(() => {
     if (!categoryInfo) return;
 
-    const fetchProducts = async () => {
+    const loadProducts = async () => {
       setLoadingMore(true);
       try {
         const idsToFetch = [
@@ -171,18 +171,12 @@ export default function CategoryView() {
           ...subCategories.map((c: any) => c.id),
         ];
 
-        const query = new URLSearchParams();
-        idsToFetch.forEach((id) => query.append("category_ids", id.toString()));
-
-        query.set("skip", ((page - 1) * LIMIT).toString());
-        query.set("limit", LIMIT.toString());
-
-        if (currentSearch) query.set("search", currentSearch);
-        if (currentSort !== "popularity") query.set("sort", currentSort);
-
-        const res = await fetch(`${API_URL}/products/?${query.toString()}`);
-
-        const responseData = await res.json();
+        const responseData = await fetchCategoryProducts(idsToFetch, {
+          skip: (page - 1) * LIMIT,
+          limit: LIMIT,
+          search: currentSearch || undefined,
+          sort: currentSort,
+        });
 
         setTotalCount(responseData.total);
         const newProducts = responseData.data;
@@ -208,7 +202,7 @@ export default function CategoryView() {
       }
     };
 
-    fetchProducts();
+    loadProducts();
   }, [categoryInfo, subCategories, page, currentSort, currentSearch]);
 
   const updateParams = (updates: any) => {

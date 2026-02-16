@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import Home from "@/app/page";
-import CartSidebar from "@/components/CartSidebar";
+import CartSidebar from "@/components/cart/CartSidebar";
 import { CartProvider } from "@/context/CartContext";
 
 // 1. Mocka beroenden
@@ -113,7 +113,7 @@ describe("Varukorgslogik", () => {
     const itemContainer = productInCart.closest('div[class*="flex gap"]');
     if (!itemContainer) throw new Error("Hittade inte produktens container i korgen");
 
-    const minusButton = within(itemContainer).getByRole('button', { name: "-" });
+    const minusButton = within(itemContainer as HTMLElement).getByRole('button', { name: "-" });
     fireEvent.click(minusButton);
 
     // Verifiera att listan nu är tom
@@ -135,28 +135,28 @@ describe("Varukorgslogik", () => {
     const itemContainer = productInCart.closest('div[class*="flex gap"]');
     if (!itemContainer) throw new Error("Hittade inte produktens container i korgen");
 
-    const plusButton = within(itemContainer).getByRole('button', { name: "+" });
-    const minusButton = within(itemContainer).getByRole('button', { name: "-" });
+    const plusButton = within(itemContainer as HTMLElement).getByRole('button', { name: "+" });
+    const minusButton = within(itemContainer as HTMLElement).getByRole('button', { name: "-" });
 
     // Öka till 2
     fireEvent.click(plusButton);
     await waitFor(() => {
-      expect(within(itemContainer).getByText("2")).toBeInTheDocument();
-      expect(within(itemContainer).getByText(/200\s*kr/i)).toBeInTheDocument();
+      expect(within(itemContainer as HTMLElement).getByText("2")).toBeInTheDocument();
+      expect(within(itemContainer as HTMLElement).getByText(/200\s*kr/i)).toBeInTheDocument();
     });
 
     // Öka till 3
     fireEvent.click(plusButton);
     await waitFor(() => {
-        expect(within(itemContainer).getByText("3")).toBeInTheDocument();
-        expect(within(itemContainer).getByText(/300\s*kr/i)).toBeInTheDocument();
+        expect(within(itemContainer as HTMLElement).getByText("3")).toBeInTheDocument();
+        expect(within(itemContainer as HTMLElement).getByText(/300\s*kr/i)).toBeInTheDocument();
     });
     
     // Minska till 2
     fireEvent.click(minusButton);
     await waitFor(() => {
-        expect(within(itemContainer).getByText("2")).toBeInTheDocument();
-        expect(within(itemContainer).getByText(/200\s*kr/i)).toBeInTheDocument();
+        expect(within(itemContainer as HTMLElement).getByText("2")).toBeInTheDocument();
+        expect(within(itemContainer as HTMLElement).getByText(/200\s*kr/i)).toBeInTheDocument();
     });
   });
 
@@ -188,7 +188,7 @@ describe("Varukorgslogik", () => {
         if (!itemContainer) throw new Error("Hittade inte produktens container i korgen");
 
         // Verifiera antalet *inom* den raden
-        expect(within(itemContainer).getByText("1")).toBeInTheDocument();
+        expect(within(itemContainer as HTMLElement).getByText("1")).toBeInTheDocument();
     });
   });
 });

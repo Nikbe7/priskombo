@@ -7,19 +7,7 @@ import React, {
   useMemo,
   useEffect,
 } from "react";
-
-// Vi definierar Product som vanligt
-export type Product = {
-  id: number;
-  name: string;
-  ean: string;
-  slug: string | null;
-  image_url: string | null;
-  category: { name: string; slug: string } | null;
-  prices: { price: number; store: string; url: string }[];
-};
-
-export type CartItem = Product & { quantity: number };
+import type { Product, CartItem } from "@/types/product";
 
 interface CartContextType {
   basket: CartItem[];

@@ -3,33 +3,11 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
-import ProductImage from "@/components/ProductImage";
+import ProductImage from "@/components/product/ProductImage";
 import { toast } from "sonner";
 import { ExternalLink, Check, ShoppingBag } from "lucide-react";
 import { useMemo } from "react";
-
-type CategoryLink = {
-  name: string;
-  slug: string;
-  parent?: CategoryLink | null;
-};
-
-type ProductDetails = {
-  id: number;
-  name: string;
-  ean: string;
-  slug: string | null;
-  image_url: string | null;
-  category: CategoryLink | null;
-  prices: {
-    store: string;
-    price: number;
-    regular_price?: number;
-    discount_percent?: number;
-    url: string;
-    shipping?: number;
-  }[];
-};
+import type { ProductDetails, CategoryLink } from "@/types/product";
 
 export default function ProductView({ product }: { product: ProductDetails }) {
   const { addToBasket } = useCart();

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCart } from "@/context/CartContext";
-import API_URL from "@/lib/config";
+import { fetchOptimization } from "@/services/optimizer";
 import { 
   ExternalLink, 
   CheckCircle, 
@@ -14,7 +14,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import ProductImage from "@/components/ProductImage";
+import ProductImage from "@/components/product/ProductImage";
 
 export default function OptimizePage() {
   const { basket, isInitialized, setIsCartOpen } = useCart();
@@ -40,7 +40,7 @@ export default function OptimizePage() {
   useEffect(() => {
     if (!isInitialized || basket.length === 0) return;
 
-    const fetchOptimization = async () => {
+    const runOptimization = async () => {
       setLoading(true);
       try {
         const items = basket.map((p) => ({
@@ -48,28 +48,18 @@ export default function OptimizePage() {
           quantity: p.quantity,
         }));
 
-        const res = await fetch(`${API_URL}/optimize`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ items }),
-        });
-        
-        if (res.ok) {
-          const data = await res.json();
-          setResults(data);
-        } else {
-            toast.error("Kunde inte optimera korgen just nu.");
-        }
+        const data = await fetchOptimization(items);
+        setResults(data);
       } catch (err) {
         console.error(err);
-        toast.error("Ett fel uppstod.");
+        toast.error(err instanceof Error ? err.message : "Ett fel uppstod.");
       } finally {
         setLoading(false);
       }
     };
 
     const timeoutId = setTimeout(() => {
-        fetchOptimization();
+        runOptimization();
     }, 500);
 
     return () => clearTimeout(timeoutId);

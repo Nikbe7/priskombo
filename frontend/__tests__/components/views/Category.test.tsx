@@ -35,6 +35,7 @@ describe('Category View', () => {
       // KATEGORIER
       if (urlString.includes('/categories')) {
         return Promise.resolve({
+          ok: true,
           json: () => Promise.resolve([
             { id: 1, name: 'Skönhet & Hälsa', slug: 'skonhet-halsa', parent_id: null },
             { id: 2, name: 'Hårvård', slug: 'harvard', parent_id: 1 }
@@ -45,6 +46,7 @@ describe('Category View', () => {
       // PRODUKTER
       if (urlString.includes('/products')) {
         return Promise.resolve({
+          ok: true,
           json: () => Promise.resolve({
             total: 150,
             data: [
@@ -62,7 +64,7 @@ describe('Category View', () => {
         });
       }
 
-      return Promise.resolve({ json: () => Promise.resolve({}) });
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     });
   });
 
@@ -134,6 +136,7 @@ describe('Category View', () => {
 
       if (urlString.includes('/categories')) {
         return Promise.resolve({
+          ok: true,
           json: () => Promise.resolve([
             { id: 1, name: 'Skönhet & Hälsa', slug: 'skonhet-halsa', parent_id: null },
             { id: 2, name: 'Hårvård', slug: 'harvard', parent_id: 1 }
@@ -143,11 +146,12 @@ describe('Category View', () => {
 
       if (urlString.includes('/products')) {
         return Promise.resolve({
+          ok: true,
           json: () => Promise.resolve({ total: 0, data: [] }),
         });
       }
 
-      return Promise.resolve({ json: () => Promise.resolve({}) });
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     });
 
     render(

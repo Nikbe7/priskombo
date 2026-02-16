@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import MobileCart from '@/components/MobileCart';
-import CartSidebar from '@/components/CartSidebar'; // Importera CartSidebar
+import MobileCart from '@/components/cart/MobileCart';
+import CartSidebar from '@/components/cart/CartSidebar';
 import { CartProvider, useCart } from '@/context/CartContext';
 
 const TestAddToCart = () => {
