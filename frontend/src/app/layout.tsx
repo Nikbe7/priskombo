@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "@/context/CartContext";
 import CartSidebar from "@/components/CartSidebar";
@@ -9,7 +9,8 @@ import MobileCart from "@/components/MobileCart";
 import { BASE_URL } from '@/lib/config';
 import { Toaster } from "sonner";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
@@ -24,7 +25,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="sv">
-      <body className={`${inter.className} bg-gray-50 text-gray-900`}>
+      <body className={`${inter.variable} ${outfit.variable} font-sans bg-gray-50 text-gray-900`}>
         <CartProvider>
           <div className="flex min-h-screen flex-col">
             

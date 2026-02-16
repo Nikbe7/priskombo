@@ -59,12 +59,14 @@ const TestApp = () => (
 // Helper för att hitta produktkortets knapp
 const findProductCardButton = async (name: string) => {
     const productHeading = await screen.findByRole('heading', { name });
-    // Traversera upp till en container som unikt innehåller både produktinfo och knapp
-    const productCardContainer = productHeading.closest('.p-4'); 
-    if (!productCardContainer) {
+    // Hitta närmaste container som har en button — deal-kort använder 'p-3'
+    let container = productHeading.closest('[class*="p-3"]') 
+                 || productHeading.closest('[class*="p-4"]')
+                 || productHeading.closest('[class*="rounded"]');
+    if (!container) {
         throw new Error(`Kunde inte hitta container för produkt: ${name}`);
     }
-    return within(productCardContainer).getByRole('button');
+    return within(container as HTMLElement).getByRole('button');
 }
 
 describe("Varukorgslogik", () => {

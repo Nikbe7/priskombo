@@ -21,7 +21,7 @@ describe('Category View', () => {
     // 1. Mocka IntersectionObserver
     // @ts-ignore
     global.IntersectionObserver = class IntersectionObserver {
-      constructor(callback: any) { this.callback = callback; }
+      constructor() {}
       observe() { return null; }
       disconnect() { return null; }
       unobserve() { return null; }
@@ -84,8 +84,9 @@ describe('Category View', () => {
       expect(screen.getByText('Lyxigt Schampo')).toBeInTheDocument();
       expect(screen.getByText('89 kr')).toBeInTheDocument();
 
-      // 4. Total antal
-      expect(screen.getByText("1 / 150 produkter")).toBeInTheDocument();
+      // 4. Total antal (text är uppdelad i separata noder)
+      expect(screen.getByText(/Visar/)).toBeInTheDocument();
+      expect(screen.getByText(/150/)).toBeInTheDocument();
     });
   });
 
@@ -101,7 +102,7 @@ describe('Category View', () => {
     );
 
     const skeletons = screen.getAllByTestId('product-skeleton');
-    expect(skeletons.length).toBe(6);
+    expect(skeletons.length).toBe(4);
     expect(skeletons[0].querySelector('.animate-pulse')).toBeInTheDocument();
   });
 
@@ -116,11 +117,48 @@ describe('Category View', () => {
       expect(screen.getByRole('heading', { name: /Hårvård/i, level: 1 })).toBeInTheDocument();
     });
     
-    expect(screen.getByRole('combobox')).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Populärast' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Pris (Lågt - Högt)' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Pris (Högt - Lågt)' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Betyg' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Namn (A-Ö)' })).toBeInTheDocument();
+    // Det finns två select-element (desktop + mobil), använd getAllByRole
+    const comboboxes = screen.getAllByRole('combobox');
+    expect(comboboxes.length).toBe(2);
+    expect(screen.getAllByRole('option', { name: 'Populärast' }).length).toBe(2);
+    expect(screen.getAllByRole('option', { name: 'Pris (Lågt - Högt)' }).length).toBe(2);
+    expect(screen.getAllByRole('option', { name: 'Pris (Högt - Lågt)' }).length).toBe(2);
+    expect(screen.getAllByRole('option', { name: 'Betyg' }).length).toBe(2);
+    expect(screen.getAllByRole('option', { name: 'Namn (A-Ö)' }).length).toBe(2);
+  });
+
+  it('visar tomt tillstånd när inga produkter finns', async () => {
+    // @ts-ignore - Skriv över fetch med tom data
+    global.fetch = jest.fn((url: string) => {
+      const urlString = url.toString();
+
+      if (urlString.includes('/categories')) {
+        return Promise.resolve({
+          json: () => Promise.resolve([
+            { id: 1, name: 'Skönhet & Hälsa', slug: 'skonhet-halsa', parent_id: null },
+            { id: 2, name: 'Hårvård', slug: 'harvard', parent_id: 1 }
+          ]),
+        });
+      }
+
+      if (urlString.includes('/products')) {
+        return Promise.resolve({
+          json: () => Promise.resolve({ total: 0, data: [] }),
+        });
+      }
+
+      return Promise.resolve({ json: () => Promise.resolve({}) });
+    });
+
+    render(
+      <CartProvider>
+        <CategoryView />
+      </CartProvider>
+    );
+
+    await waitFor(() => {
+      // Tomt tillstånd visar "Inga produkter hittades i denna kategori."
+      expect(screen.getByText(/Inga produkter hittades/i)).toBeInTheDocument();
+    });
   });
 });

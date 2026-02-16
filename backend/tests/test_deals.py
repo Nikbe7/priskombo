@@ -36,3 +36,10 @@ def test_get_deals(client, db):
     assert deal["name"] == "Rea Produkt"
     assert deal["discount_percent"] == 20
     assert deal["slug"] == "rea-produkt" # <-- Nytt: Viktigt test!
+
+def test_no_deals(client, db):
+    """Testar att endpoint returnerar tom lista om inga deals finns."""
+    response = client.get("/api/v1/deals")
+    assert response.status_code == 200
+    data = response.json()
+    assert data == []

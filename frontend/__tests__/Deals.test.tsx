@@ -27,6 +27,10 @@ global.fetch = jest.fn((url: string) => {
 });
 
 describe('Deals Page', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('visar lista på deals och rabatter', async () => {
     render(
       <CartProvider>
@@ -53,5 +57,35 @@ describe('Deals Page', () => {
       // NYTT: Kolla att knappen har rätt text (konsekvent med resten av sajten)
       expect(screen.getByText('+ Lägg till')).toBeInTheDocument();
     });
+  });
+
+  it('visar tomt tillstånd om inga deals finns', async () => {
+    // @ts-ignore - Skriv över global fetch för detta test
+    global.fetch = jest.fn(() =>
+      Promise.resolve({ json: () => Promise.resolve([]) })
+    );
+
+    render(
+      <CartProvider>
+        <DealsPage />
+      </CartProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Hittade inga deals just nu/i)).toBeInTheDocument();
+    });
+  });
+
+  it('visar laddningstext medan data hämtas', () => {
+    // @ts-ignore - Fetch som aldrig resolvar
+    global.fetch = jest.fn(() => new Promise(() => {}));
+
+    render(
+      <CartProvider>
+        <DealsPage />
+      </CartProvider>
+    );
+
+    expect(screen.getByText(/Letar efter fynd/i)).toBeInTheDocument();
   });
 });

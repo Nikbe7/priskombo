@@ -27,10 +27,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Om du har 100 000+ produkter behöver du en mer avancerad lösning senare.
   let products: Product[] = [];
   try {
-    const res = await fetch(`${API_URL}/products?limit=2000`, { next: { revalidate: 3600 } });
+    const res = await fetch(`${API_URL}/products/?limit=2000`, { next: { revalidate: 3600 } });
     if (res.ok) {
-        const json = await res.json();
-        products = json.data; // Viktigt: Vi hämtar arrayen från "data" propertyn
+      const json = await res.json();
+      products = json.data; // Viktigt: Vi hämtar arrayen från "data" propertyn
     }
   } catch (error) {
     console.error('Sitemap Error (Products):', error);
@@ -61,15 +61,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const productRoutes = products.map((prod) => {
     // Om backend skickar med category-objektet (som vi fixade i förra steget)
     // så kan vi bygga /kategori/produkt-slug. Annars bara /produkt-slug.
-    const urlPath = prod.category?.slug 
-        ? `/${prod.category.slug}/${prod.slug}`
-        : `/${prod.slug}`;
+    const urlPath = prod.category?.slug
+      ? `/${prod.category.slug}/${prod.slug}`
+      : `/${prod.slug}`;
 
     return {
-        url: `${BASE_URL}${urlPath}`,
-        lastModified: new Date(), // Eller prod.updated_at om det finns
-        changeFrequency: 'daily' as const,
-        priority: 0.6,
+      url: `${BASE_URL}${urlPath}`,
+      lastModified: new Date(), // Eller prod.updated_at om det finns
+      changeFrequency: 'daily' as const,
+      priority: 0.6,
     };
   });
 

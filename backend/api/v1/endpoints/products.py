@@ -46,11 +46,22 @@ def get_products(
 
     # 3. Sortering
     if sort == "price_asc" or sort == "price_desc":
-        query = query.outerjoin(ProductPrice).group_by(Product.id)
+        # Use a subquery for min price to avoid GROUP BY conflicts with eager loading
+        min_price_subq = (
+            db.query(
+                ProductPrice.product_id,
+                func.min(ProductPrice.price).label("min_price")
+            )
+            .group_by(ProductPrice.product_id)
+            .subquery()
+        )
+        query = query.outerjoin(
+            min_price_subq, Product.id == min_price_subq.c.product_id
+        )
         if sort == "price_asc":
-            query = query.order_by(func.min(ProductPrice.price).asc())
+            query = query.order_by(min_price_subq.c.min_price.asc().nullslast())
         else:
-            query = query.order_by(func.min(ProductPrice.price).desc())
+            query = query.order_by(min_price_subq.c.min_price.desc().nullslast())
             
     elif sort == "rating_desc":
         query = query.order_by(Product.rating.desc().nullslast())

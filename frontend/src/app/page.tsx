@@ -23,6 +23,7 @@ import {
   Recycle,
   Flame,
 } from "lucide-react";
+import { motion } from "framer-motion";
 
 // Typer
 type Category = {
@@ -135,50 +136,77 @@ function HomeContent() {
     categories.filter((c) => c.parent_id === parentId);
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-50 font-sans">
       {/* HERO */}
       {queryFromUrl.length === 0 && (
-        <section className="relative bg-gradient-to-b from-blue-100 to-transparent py-6 md:py-8 px-4 text-center select-none">
-          {/* Decorative Shapes */}
-          <div className="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-gradient-to-br from-indigo-100 to-blue-200/50 blur-3xl opacity-60"></div>
-          <div className="absolute bottom-0 right-0 translate-x-1/2 translate-y-1/2 w-96 h-96 rounded-full bg-gradient-to-tl from-blue-100 to-cyan-100/50 blur-3xl opacity-50"></div>
-          <div className="max-w-4xl mx-auto relative z-10">
-            <h1 className="text-2xl md:text-5xl font-extrabold text-slate-900 tracking-tight mb-2 md:mb-3 leading-tight">
-              Spara pengar på <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
+        <section
+          className="relative overflow-hidden py-10 md:py-24 px-4"
+          style={{ background: 'linear-gradient(105deg, #020617 0%, #172554 60%, #1e3a8a 100%)' }}
+        >
+          {/* Decorative elements */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <div className="absolute -top-24 -right-24 w-96 h-96 bg-brand-500/10 rounded-full blur-3xl opacity-50" />
+            <div className="absolute -bottom-32 -left-32 w-[500px] h-[500px] bg-brand-500/10 rounded-full blur-3xl opacity-50" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-brand-500/[0.05] rounded-full blur-3xl rotate-12" />
+          </div>
+
+          <div className="container mx-auto text-center max-w-4xl relative z-10 flex flex-col items-center">
+
+
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="text-3xl md:text-6xl lg:text-7xl font-display font-bold tracking-tight text-white mb-4 md:mb-6 leading-[1.1]"
+            >
+              Spara pengar på{" "}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 via-blue-400 to-indigo-400">
                 varje köp
               </span>
-            </h1>
-            <p className="text-xs md:text-base text-slate-500 mb-2 max-w-xl mx-auto leading-relaxed px-2">
-              Sök, kombinera och optimera. Vi hittar den billigaste lösningen
-              för hela din inköpslista.
-            </p>
+            </motion.h1>
+
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="text-base md:text-xl text-slate-400 max-w-2xl mx-auto mb-6 md:mb-10 leading-relaxed px-2 md:px-4"
+            >
+              Sök, kombinera och optimera. Vi hittar den billigaste lösningen för hela din inköpslista.
+            </motion.p>
+
+
           </div>
         </section>
       )}
 
       {/* RENDER CATEGORIES OUTSIDE MAIN WHEN NO SEARCH */}
       {searchResults.length === 0 && !loading && queryFromUrl.length === 0 && (
-        <div className="px-3 md:px-8 max-w-[1600px] mx-auto">
-          <section className="animate-fade-in-up mt-8 relative z-20">
-            <h2 className="text-lg md:text-xl font-bold mb-4 md:mb-6 text-slate-800 flex items-center gap-2 px-1">
-              <span className="w-1 h-5 bg-blue-600 rounded-full"></span>
-              Utforska kategorier
-            </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 relative z-10">
+        <div className="px-3 py-4 md:p-8 max-w-[1600px] mx-auto">
+          <section>
+            <div className="flex items-center justify-between mb-4 md:mb-8">
+               <h2 className="text-lg md:text-xl font-bold text-slate-800 flex items-center gap-2">
+                <span className="w-1 h-5 bg-blue-600 rounded-full"></span>
+                Utforska kategorier
+              </h2>
+            </div>
+           
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5 md:gap-4">
               {/* 1. KAMPANJER */}
-              <div
-                className="relative group p-3 border bg-white rounded-xl flex flex-col items-center justify-center text-center transition-all duration-300 cursor-pointer h-24 hover:shadow-lg hover:border-red-300 select-none"
-                onClick={() => router.push(`/deals`)}
+              <motion.div
+                whileHover={{ y: -5 }}
+                className="group relative p-3 md:p-4 bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:border-brand-300 transition-all duration-300 cursor-pointer flex flex-row items-center gap-3 md:gap-4 h-20 md:h-24 hover:z-50"
+                 onClick={() => router.push(`/deals`)}
               >
-                <Flame className="w-8 h-8 text-red-500 mb-2 transition-transform duration-200 group-hover:scale-110" />
-                <span className="text-sm font-bold text-slate-700 leading-tight flex items-center justify-center">
+                 <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-red-50 flex items-center justify-center shrink-0 group-hover:bg-red-100 transition-colors">
+                    <Flame className="w-5 h-5 md:w-6 md:h-6 text-red-500 transition-transform duration-300 group-hover:scale-110" />
+                 </div>
+                <span className="text-xs md:text-sm font-bold text-slate-700 group-hover:text-red-600 transition-colors text-left">
                   Kampanjer
                 </span>
-              </div>
-
+              </motion.div>
+ 
               {/* 2. HUVUDKATEGORIER */}
-              {rootCategories.map((root) => {
+              {rootCategories.map((root, index) => {
                 const subs = getSubCategories(root.id);
                 const isComingSoon = root.coming_soon;
                 const Icon = categoryIcons.find(
@@ -186,60 +214,67 @@ function HomeContent() {
                 )?.icon;
 
                 return (
-                  <div
+                  <motion.div
                     key={root.id}
-                    className={`relative group p-3 border bg-white rounded-xl flex flex-col items-center justify-center text-center transition-all duration-300 h-24 select-none ${
+                     whileHover={!isComingSoon ? { y: -5 } : {}}
+                    className={`relative group p-3 md:p-4 bg-white rounded-lg border border-slate-200 shadow-sm flex flex-row items-center gap-3 md:gap-4 transition-all duration-300 h-20 md:h-24 select-none ${
                       isComingSoon
-                        ? "opacity-60 cursor-default"
-                        : "cursor-pointer hover:shadow-lg hover:border-blue-300"
+                        ? "opacity-60 cursor-default bg-slate-50"
+                        : "cursor-pointer hover:shadow-md hover:border-brand-300 hover:z-50"
                     }`}
-                    onClick={(e) => {
+                    onClick={(e: React.MouseEvent) => {
                       if ((e.target as HTMLElement).closest('.dropdown-menu')) return;
                       if (!isComingSoon) router.push(`/${root.slug}`);
                     }}
                   >
                     {Icon && (
-                      <Icon className="w-8 h-8 text-blue-500 mb-2 transition-transform duration-200 group-hover:scale-110" />
+                      <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center shrink-0 transition-colors ${
+                        isComingSoon ? 'bg-slate-100' : 'bg-brand-50 group-hover:bg-brand-100'
+                      }`}>
+                         <Icon className={`w-5 h-5 md:w-6 md:h-6 ${isComingSoon ? 'text-slate-400' : 'text-brand-600'} transition-transform duration-300 group-hover:scale-110`} />
+                      </div>
+                     
                     )}
                     
-                    <span className="text-sm font-bold text-slate-700 leading-tight flex items-center justify-center">
+                    <span className={`text-xs md:text-sm font-bold leading-tight text-left ${
+                        isComingSoon ? 'text-slate-400' : 'text-slate-700 group-hover:text-brand-700'
+                    }`}>
                       {root.name}
                     </span>
 
                     {isComingSoon && (
-                      <div className="absolute top-1.5 right-1.5 bg-slate-800 text-white text-[7px] font-bold px-1.5 py-0.5 rounded-full">
-                        SNART
+                      <div className="absolute top-2 right-2 bg-slate-200 text-slate-500 text-[9px] font-bold px-2 py-1 rounded-full uppercase tracking-wider">
+                        Snart
                       </div>
                     )}
 
                     {/* Hover-meny (Dropdown) */}
                     {!isComingSoon && (
                       <div
-                        className="dropdown-menu absolute left-0 top-full mt-2 w-full bg-white rounded-xl shadow-xl border border-blue-100 z-50 flex flex-col 
+                        className="dropdown-menu absolute left-1/2 -translate-x-1/2 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 z-50 flex flex-col 
                                   opacity-0 invisible group-hover:opacity-100 group-hover:visible hover:opacity-100 hover:visible 
                                   transition-all duration-200 origin-top transform scale-95 group-hover:scale-100"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        {/* Pil uppåt för dropdown */}
-                        <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-t border-l border-blue-100 rotate-45"></div>
+                         <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-t border-l border-slate-100 rotate-45"></div>
                         <div
-                          className="p-2 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 cursor-pointer hover:bg-slate-100 rounded-t-xl relative z-10"
+                          className="p-3 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 cursor-pointer hover:bg-slate-100 rounded-t-xl relative z-10"
                           onClick={() => router.push(`/${root.slug}`)}
                         >
                           <span className="font-bold text-[10px] text-slate-500 uppercase tracking-wide">
-                            Öppna kategori
+                            Gå till kategori
                           </span>
-                          <span className="text-[10px] text-blue-600 font-bold">
+                          <span className="text-xs text-brand-600 font-bold">
                             →
                           </span>
                         </div>
-                        <div className="p-1 max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 relative z-10">
+                        <div className="p-1 max-h-56 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 relative z-10">
                           {subs.length > 0 ? (
                             subs.map((sub) => (
                               <Link
                                 key={sub.id}
                                 href={`/${root.slug}/${sub.slug}`}
-                                className="block px-3 py-2 text-xs text-slate-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors font-medium text-left"
+                                className="block px-3 py-2 text-xs text-slate-600 hover:text-brand-700 hover:bg-brand-50 rounded-lg transition-colors font-medium text-left"
                               >
                                 {sub.name}
                               </Link>
@@ -252,7 +287,7 @@ function HomeContent() {
                         </div>
                       </div>
                     )}
-                  </div>
+                  </motion.div>
                 );
               })}
             </div>
@@ -281,7 +316,7 @@ function HomeContent() {
                       Se alla deals →
                     </Link>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2.5 md:gap-4">
                     {homeDeals.map((deal) => (
                       <div
                         key={deal.id}
@@ -294,7 +329,7 @@ function HomeContent() {
                           href={createProductUrl(deal.id, deal.slug, deal.name)}
                           className="block"
                         >
-                          <div className="h-32 bg-slate-50 relative flex items-center justify-center p-4">
+                          <div className="h-28 md:h-32 bg-slate-50 relative flex items-center justify-center p-3 md:p-4">
                             <ProductImage
                               src={deal.image_url}
                               alt={deal.name}
@@ -303,7 +338,7 @@ function HomeContent() {
                             />
                           </div>
                         </Link>
-                        <div className="p-4">
+                        <div className="p-3 md:p-4">
                           <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-1">
                             {deal.store}
                           </div>
@@ -315,7 +350,7 @@ function HomeContent() {
                             )}
                             className="block mb-2 hover:text-blue-600 transition"
                           >
-                            <h3 className="font-bold text-slate-800 text-sm leading-snug line-clamp-2 h-10">
+                            <h3 className="font-bold text-slate-800 text-xs md:text-sm leading-snug line-clamp-2 h-8 md:h-10">
                               {deal.name}
                             </h3>
                           </Link>
@@ -324,7 +359,7 @@ function HomeContent() {
                               <div className="text-gray-400 text-xs line-through">
                                 {deal.regular_price} kr
                               </div>
-                              <div className="text-lg font-extrabold text-red-600">
+                              <div className="text-base md:text-lg font-extrabold text-red-600">
                                 {deal.price} kr
                               </div>
                             </div>

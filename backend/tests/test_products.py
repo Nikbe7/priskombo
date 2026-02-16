@@ -122,3 +122,16 @@ def test_products_endpoint_returns_affiliate_links(client, db):
     
     detail_price = detail_data["prices"][0]
     assert "at.track.adtr.co" in detail_price["url"]
+
+def test_product_not_found_returns_404(client, db):
+    """Testar att en icke-existerande produkt ger 404."""
+    response = client.get("/api/v1/products/does-not-exist-999")
+    assert response.status_code == 404
+
+def test_empty_products_list(client, db):
+    """Testar att tom databas ger tom lista."""
+    response = client.get("/api/v1/products?limit=10")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 0
+    assert data["data"] == []
