@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, selectinload, joinedload
 from sqlalchemy import or_, desc, asc, func
 
-from app.database import get_db
+from app.db.session import get_db
 from app.models import Product, ProductPrice, Store, Category
 from app.services.affiliate import generate_tracking_link  # <--- NY IMPORT
 

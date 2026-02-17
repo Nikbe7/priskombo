@@ -5,7 +5,8 @@ from fastapi.testclient import TestClient
 import os
 from dotenv import load_dotenv
 
-from app.database import Base, get_db
+from app.db.base import Base
+from app.db.session import get_db
 from app.main import app
 
 # URL till testdatabasen (som vi skapade i docker-compose)

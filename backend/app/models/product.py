@@ -1,21 +1,7 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, Text, DateTime, Boolean
-from sqlalchemy.orm import relationship, backref
-from app.database import Base
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, Text, DateTime
+from sqlalchemy.orm import relationship
+from app.db.session import Base
 from datetime import datetime, timezone
-
-class Category(Base):
-    __tablename__ = "categories"
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True)
-    slug = Column(String, unique=True, index=True)
-    
-    parent_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
-    coming_soon = Column(Boolean, default=False)
-    
-    children = relationship("Category", 
-                          backref=backref('parent', remote_side=[id]),
-                          cascade="all, delete-orphan")
-    products = relationship("Product", back_populates="category")
 
 class Product(Base):
     __tablename__ = "products"
@@ -33,16 +19,6 @@ class Product(Base):
 
     category = relationship("Category", back_populates="products")
     prices = relationship("ProductPrice", back_populates="product")
-
-class Store(Base):
-    __tablename__ = "stores"
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True)
-    base_shipping = Column(Float, default=0.0)
-    free_shipping_limit = Column(Float, nullable=True)
-    prices = relationship("ProductPrice", back_populates="store")
-    affiliate_network = Column(String)
-    affiliate_program_id = Column(String)
 
 class ProductPrice(Base):
     __tablename__ = "product_prices"

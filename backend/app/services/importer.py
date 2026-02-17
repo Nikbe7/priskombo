@@ -2,7 +2,7 @@ import pandas as pd
 from sqlalchemy.orm import Session
 from app.models import Product, ProductPrice, Store
 from datetime import datetime
-from app.logging_config import get_logger
+from app.core.logging import get_logger
 
 logger = get_logger("importer")
 

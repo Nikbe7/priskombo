@@ -7,7 +7,7 @@ from google.genai import types
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.models import Product, Category
-from app.logging_config import get_logger
+from app.core.logging import get_logger
 
 logger = get_logger("categorizer")
 

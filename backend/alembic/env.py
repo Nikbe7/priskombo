@@ -15,8 +15,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # 2. IMPORTERA DINA MODELLER OCH DB-URL
 # Detta kopplar ihop Alembic med din kod
-from app.models import Base                  # Din SQLAlchemy Base med alla modeller
-from app.database import DATABASE_URL # Din anslutningssträng (URL)
+from app.db.base import Base                  # Din SQLAlchemy Base med alla modeller
+from app.db.session import DATABASE_URL # Din anslutningssträng (URL)
 
 # ---------------------------------------------------------
 

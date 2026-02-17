@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session, subqueryload, joinedload
 from sqlalchemy import func, desc, asc, distinct
 from typing import Optional, List
 
-from app.database import get_db
+from app.db.session import get_db
 from app.models import Category, Product, ProductPrice, Store
 
 router = APIRouter()

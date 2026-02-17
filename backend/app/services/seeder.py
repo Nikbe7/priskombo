@@ -2,7 +2,7 @@ import re
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.models import Category, Product
-from app.logging_config import get_logger
+from app.core.logging import get_logger
 
 logger = get_logger("seeder")
 

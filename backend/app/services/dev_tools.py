@@ -2,7 +2,7 @@ import random
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from app.models import Product, ProductPrice, Store, Category
-from app.logging_config import get_logger
+from app.core.logging import get_logger
 
 logger = get_logger("dev_tools")
 

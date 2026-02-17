@@ -6,7 +6,7 @@ import google.generativeai as genai
 from sqlalchemy.orm import Session
 from sqlalchemy.dialects.postgresql import insert
 from app.models import Product, ProductPrice, Store
-from app.logging_config import get_logger
+from app.core.logging import get_logger
 
 logger = get_logger("feed_engine")
 

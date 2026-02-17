@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from pydantic import BaseModel
-from app.database import get_db
+from app.db.session import get_db
 from app.services.optimizer import calculate_best_basket
 
 router = APIRouter()

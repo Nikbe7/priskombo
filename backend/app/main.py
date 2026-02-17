@@ -1,13 +1,13 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
-from app.logging_config import setup_logging, get_logger
+from app.core.logging import setup_logging, get_logger
 
 # Services
 from app.services.scheduler import start_scheduler, scheduler, download_and_import_job
 
 # Router (Samlingsfilen vi skapade)
-from api.v1.api import api_router
+from app.api.v1.api import api_router
 
 # 1. Initiera loggning direkt
 setup_logging()

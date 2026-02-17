@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from api.v1.endpoints import products, deals, categories, optimize, search
+from app.api.v1.endpoints import products, deals, categories, optimize, search
 
 api_router = APIRouter()
 

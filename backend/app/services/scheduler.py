@@ -2,10 +2,10 @@ import os
 import requests
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-from app.database import SessionLocal
+from app.db.session import SessionLocal
 from app.services.importer import import_csv_feed
 from app.services.seeder import update_coming_soon_status
-from app.logging_config import get_logger
+from app.core.logging import get_logger
 
 logger = get_logger("scheduler")
 
