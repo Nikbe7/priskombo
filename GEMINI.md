@@ -27,7 +27,16 @@ Priskombo is a price comparison and basket optimization tool for the Swedish mar
 - **Frontend Hosting:** Vercel.
 - **Backend Hosting:** Render (Dockerized FastAPI).
 - **Database:** Supabase (Managed PostgreSQL).
+- **Caching:** Redis (Local/Docker).
 - **Monitoring:** Uptime (Health checks/Status).
+
+### AI & Development Tools (MCP)
+- **Protocol:** Model Context Protocol (MCP).
+- **Servers:**
+  - `postgres` (Direct DB access).
+  - `github` (Repo search/issues).
+  - `priskombo-optimizer` (Custom Python server via `backend/mcp_server.py`).
+- **Config:** `mcp_config.json` (Secrets via env vars).
 
 ## 3. Architecture & Key Concepts
 
@@ -46,6 +55,11 @@ Priskombo is a price comparison and basket optimization tool for the Swedish mar
   - Desktop: Navbar with search.
   - Mobile: Navbar + Sticky bottom bar (for primary actions like "Add to cart").
 - **Cart:** handled via `CartSidebar` (desktop/mobile drawer).
+
+### MCP Server (`backend/mcp_server.py`)
+- Acts as a bridge between AI agents and the backend logic.
+- Exposes tools like `optimize_basket` and `get_product_info`.
+- Uses the same underlying services (`optimizer.py`, `db/session.py`) but runs as a standalone script to avoid web server overhead.
 
 ## 4. Coding Conventions & Rules
 
@@ -89,3 +103,6 @@ Priskombo is a price comparison and basket optimization tool for the Swedish mar
 - **Navbar Search:** There are two search inputs in the DOM (one for mobile, one for desktop). Tests must handle this using `getAllBy...`.
 - **Z-Index:** The `Navbar` and `CartSidebar` fight for z-index on mobile. `CartSidebar` must be top-most.
 - **JSDOM:** Form submissions in tests sometimes fail to trigger in JSDOM; prioritize testing click events on buttons over form submits if flaky.
+- **Port Conflicts:** Local Postgres service on Windows (port 5432) often conflicts with Docker. Ensure local service is stopped.
+- **DB Connections:** `pool_pre_ping=True` is required in SQLAlchemy to handle stale connections (especially with Docker/MCP restarts).
+- **Redis on Windows:** MCP server running on host needs `localhost` for Redis, while Docker containers use `redis` service name. Handled via env var override or logic in `mcp_server.py`.
