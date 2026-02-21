@@ -68,14 +68,21 @@ Priskombo is a price comparison and basket optimization tool for the Swedish mar
 - **Files:** Use absolute imports (e.g., `@/components/...`).
 
 ### Testing Protocol (MANDATORY)
-**"Everything must be tested."**
+**"Everything must be tested, and all tests must pass."**
+
+- **Strict Test Maintenance:** 
+  - ALWAYS run `pytest` (backend) or `npm run test` (frontend) locally after modifying logic or UI.
+  - If a code change breaks an existing test, NEVER ignore it. You MUST update the test to reflect the new logic/UI immediately in the same prompt.
+  - Test-Driven Development (TDD) mentality: When proposing a new feature or behavior, consider and write/update the test for it as part of your implementation plan.
 - **Frontend:**
   - Every new component must have a corresponding `.test.tsx` file.
   - Tests must cover: Rendering, User Interactions (clicks, typing), and State Changes.
   - When modifying UI, update tests immediately to reflect structure changes (e.g., dealing with duplicate elements for mobile/desktop layouts).
+  - **Gotchas:** When writing tests, mock `next/navigation`, `lucide-react`, and `CartContext` as they often cause issues in JSDOM environment. Form submissions in tests sometimes fail to trigger in JSDOM; prioritize testing click events on buttons over form submits if flaky.
 - **Backend:**
   - Every endpoint and service function must have unit/integration tests in `backend/tests/`.
   - Use `conftest.py` fixtures for database state.
+  - DO NOT leave failing assertions (like checking for old category names). Update the mocks and assertions to match the current system reality.
 
 ### Frontend Rules
 - **Server vs Client Components:** Default to Server Components. Use `"use client"` only when necessary (state, hooks, interactivity).
