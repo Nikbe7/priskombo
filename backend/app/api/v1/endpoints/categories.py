@@ -10,7 +10,7 @@ router = APIRouter()
 
 @router.get("/")
 def get_categories(db: Session = Depends(get_db)):
-    return db.query(Category).all()
+    return db.query(Category).filter(Category.coming_soon == False).all()
 
 @router.get("/{slug}")
 def get_category_by_slug(
@@ -133,7 +133,7 @@ def get_category_by_slug(
             "name": category.name, 
             "slug": category.slug,
             "is_parent": is_parent_category, # <-- Viktig flagga för frontend!
-            "children": [{"name": c.name, "slug": c.slug} for c in category.children] # Skicka med barnen
+            "children": [{"name": c.name, "slug": c.slug} for c in category.children if not c.coming_soon] # Skicka med barnen
         },
         "filters": {
             "brands": available_brands,

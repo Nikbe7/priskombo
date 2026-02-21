@@ -5,7 +5,7 @@ from app.services.categorizer import run_sql_keyword_categorization, run_ai_cate
 def test_sql_keyword_categorization():
     """Testar att SQL-regex genereras och körs."""
     mock_db = MagicMock()
-    cat_map = {"Manligt": 1, "Parfym": 2}
+    cat_map = {"Volymschampo": 1, "Mjällschampo": 2}
     
     mock_result = MagicMock()
     mock_result.rowcount = 3

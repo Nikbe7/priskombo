@@ -73,7 +73,6 @@ export default function CategoryGrid({ categories }: CategoryGridProps) {
           {/* 2. HUVUDKATEGORIER */}
           {rootCategories.map((root) => {
             const subs = getSubCategories(root.id);
-            const isComingSoon = root.coming_soon;
             const Icon = categoryIcons.find(
               (ci) => ci.name === root.name,
             )?.icon;
@@ -81,40 +80,25 @@ export default function CategoryGrid({ categories }: CategoryGridProps) {
             return (
               <motion.div
                 key={root.id}
-                 whileHover={!isComingSoon ? { y: -5 } : {}}
-                className={`relative group p-3 md:p-4 bg-white rounded-lg border border-slate-200 shadow-sm flex flex-row items-center gap-3 md:gap-4 transition-all duration-300 h-20 md:h-24 select-none ${
-                  isComingSoon
-                    ? "opacity-60 cursor-default bg-slate-50"
-                    : "cursor-pointer hover:shadow-md hover:border-brand-300 hover:z-50"
-                }`}
+                 whileHover={{ y: -5 }}
+                className="relative group p-3 md:p-4 bg-white rounded-lg border border-slate-200 shadow-sm flex flex-row items-center gap-3 md:gap-4 transition-all duration-300 h-20 md:h-24 select-none cursor-pointer hover:shadow-md hover:border-brand-300 hover:z-50"
                 onClick={(e: React.MouseEvent) => {
                   if ((e.target as HTMLElement).closest('.dropdown-menu')) return;
-                  if (!isComingSoon) router.push(`/${root.slug}`);
+                  router.push(`/${root.slug}`);
                 }}
               >
                 {Icon && (
-                  <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center shrink-0 transition-colors ${
-                    isComingSoon ? 'bg-slate-100' : 'bg-brand-50 group-hover:bg-brand-100'
-                  }`}>
-                     <Icon className={`w-5 h-5 md:w-6 md:h-6 ${isComingSoon ? 'text-slate-400' : 'text-brand-600'} transition-transform duration-300 group-hover:scale-110`} />
+                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center shrink-0 transition-colors bg-brand-50 group-hover:bg-brand-100">
+                     <Icon className="w-5 h-5 md:w-6 md:h-6 text-brand-600 transition-transform duration-300 group-hover:scale-110" />
                   </div>
                  
                 )}
                 
-                <span className={`text-xs md:text-sm font-bold leading-tight text-left ${
-                    isComingSoon ? 'text-slate-400' : 'text-slate-700 group-hover:text-brand-700'
-                }`}>
+                <span className="text-xs md:text-sm font-bold leading-tight text-left text-slate-700 group-hover:text-brand-700">
                   {root.name}
                 </span>
 
-                {isComingSoon && (
-                  <div className="absolute top-2 right-2 bg-slate-200 text-slate-500 text-[9px] font-bold px-2 py-1 rounded-full uppercase tracking-wider">
-                    Snart
-                  </div>
-                )}
-
                 {/* Hover-meny (Dropdown) */}
-                {!isComingSoon && (
                   <div
                     className="dropdown-menu absolute left-1/2 -translate-x-1/2 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 z-50 flex flex-col 
                               opacity-0 invisible group-hover:opacity-100 group-hover:visible hover:opacity-100 hover:visible 
@@ -151,7 +135,6 @@ export default function CategoryGrid({ categories }: CategoryGridProps) {
                       )}
                     </div>
                   </div>
-                )}
               </motion.div>
             );
           })}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
@@ -15,11 +15,11 @@ import { ArrowLeft, PackageOpen } from "lucide-react";
 // --- KOMPONENTER ---
 
 const SubCategoryLinks = ({
-  currentSlug,
+  basePath,
   subCategories,
   activeSlug,
 }: {
-  currentSlug: string;
+  basePath: string;
   subCategories: any[];
   activeSlug: string;
 }) => {
@@ -32,7 +32,7 @@ const SubCategoryLinks = ({
         {subCategories.map((sub: any) => (
           <Link
             key={sub.id}
-            href={`/${currentSlug}/${sub.slug}`}
+            href={`${basePath}/${sub.slug}`}
             className={`whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
               activeSlug === sub.slug
                 ? "bg-blue-100 text-blue-700 border-blue-200"
@@ -49,7 +49,7 @@ const SubCategoryLinks = ({
         {subCategories.map((sub: any) => (
           <Link
             key={sub.id}
-            href={`/${currentSlug}/${sub.slug}`}
+            href={`${basePath}/${sub.slug}`}
             className={`block p-2 rounded-md text-sm transition-colors ${
               activeSlug === sub.slug
                 ? "bg-blue-100 text-blue-700 font-bold"
@@ -68,11 +68,8 @@ const SubCategoryLinks = ({
 
 export default function CategoryView() {
   const params = useParams();
-  const slugPath = params.slug as string[];
-
-  const currentSlug = slugPath ? slugPath[slugPath.length - 1] : "";
-  const parentSlug =
-    slugPath && slugPath.length > 1 ? slugPath[slugPath.length - 2] : null;
+  const slugPath = params.slug as string[] || [];
+  const currentSlug = slugPath.length > 0 ? slugPath[slugPath.length - 1] : "";
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -84,6 +81,12 @@ export default function CategoryView() {
   const [categoryInfo, setCategoryInfo] = useState<any>(null);
   const [parentCategory, setParentCategory] = useState<any>(null);
   const [subCategories, setSubCategories] = useState<any[]>([]);
+  const [linksBasePath, setLinksBasePath] = useState<string>("");
+  const [activeLinkSlug, setActiveLinkSlug] = useState<string>("");
+
+  const [categoryPathObjects, setCategoryPathObjects] = useState<any[]>([]);
+  const [idsToFetch, setIdsToFetch] = useState<number[]>([]);
+
   const [products, setProducts] = useState<any[]>([]);
 
   const [loadingInitial, setLoadingInitial] = useState(true);
@@ -145,10 +148,42 @@ export default function CategoryView() {
           setParentCategory(null);
         }
 
-        const children = allCategories.filter(
-          (c: any) => c.parent_id === foundCategory.id
-        );
+        // --- BREADCRUMBS ---
+        const pathObjects: any[] = [];
+        let curr: any = foundCategory;
+        while (curr) {
+          pathObjects.unshift(curr);
+          curr = allCategories.find((c: any) => c.id === curr?.parent_id);
+        }
+        setCategoryPathObjects(pathObjects);
+
+        // --- SUB CATEGORIES / SIBLINGS ---
+        let children = allCategories.filter((c: any) => c.parent_id === foundCategory.id);
+        let basePath = `/${slugPath.join("/")}`;
+        let activeLink = "";
+
+        if (children.length === 0 && foundCategory.parent_id) {
+           // Om det är en "leaf", visa syskon istället
+           children = allCategories.filter((c: any) => c.parent_id === foundCategory.parent_id);
+           basePath = `/${slugPath.slice(0, -1).join("/")}`; 
+           activeLink = foundCategory.slug; // Markera nuvarande som aktiv bland syskonen
+        }
+
         setSubCategories(children);
+        setLinksBasePath(basePath);
+        setActiveLinkSlug(activeLink);
+
+        // --- RECURSIVE IDS TO FETCH ---
+        const getAllDescendantIds = (catId: number, categories: any[]): number[] => {
+            let ids = [catId];
+            const kids = categories.filter(c => c.parent_id === catId);
+            for (const child of kids) {
+                ids = ids.concat(getAllDescendantIds(child.id, categories));
+            }
+            return ids;
+        };
+        const allDescendants = getAllDescendantIds(foundCategory.id, allCategories);
+        setIdsToFetch(allDescendants);
 
         setLoadingInitial(false);
       } catch (err) {
@@ -158,19 +193,14 @@ export default function CategoryView() {
     };
 
     fetchCategoryStructure();
-  }, [currentSlug]);
+  }, [currentSlug, slugPath.join("/")]);
 
   useEffect(() => {
-    if (!categoryInfo) return;
+    if (!categoryInfo || idsToFetch.length === 0) return;
 
     const loadProducts = async () => {
       setLoadingMore(true);
       try {
-        const idsToFetch = [
-          categoryInfo.id,
-          ...subCategories.map((c: any) => c.id),
-        ];
-
         const responseData = await fetchCategoryProducts(idsToFetch, {
           skip: (page - 1) * LIMIT,
           limit: LIMIT,
@@ -203,7 +233,7 @@ export default function CategoryView() {
     };
 
     loadProducts();
-  }, [categoryInfo, subCategories, page, currentSort, currentSearch]);
+  }, [categoryInfo, idsToFetch, page, currentSort, currentSearch]);
 
   const updateParams = (updates: any) => {
     const newParams = new URLSearchParams(searchParams.toString());
@@ -259,21 +289,23 @@ export default function CategoryView() {
             <Link href="/" className="hover:text-blue-600">
               Start
             </Link>
-            <span>/</span>
-            {parentCategory && (
-              <>
-                <Link
-                  href={`/${parentCategory.slug}`}
-                  className="hover:text-blue-600 capitalize"
-                >
-                  {parentCategory.name}
-                </Link>
-                <span>/</span>
-              </>
-            )}
-            <span className="text-gray-900 font-medium capitalize">
-              {categoryInfo.name}
-            </span>
+            {categoryPathObjects.map((cat, idx) => (
+                <React.Fragment key={cat.id}>
+                    <span>/</span>
+                    {idx < categoryPathObjects.length - 1 ? (
+                        <Link
+                          href={`/${categoryPathObjects.slice(0, idx + 1).map(c => c.slug).join('/')}`}
+                          className="hover:text-blue-600 capitalize"
+                        >
+                          {cat.name}
+                        </Link>
+                    ) : (
+                        <span className="text-gray-900 font-medium capitalize">
+                          {cat.name}
+                        </span>
+                    )}
+                </React.Fragment>
+            ))}
           </div>
 
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-3 md:gap-4">
@@ -303,7 +335,7 @@ export default function CategoryView() {
         <div className="md:hidden sticky top-16 z-20 bg-white -mx-3 px-3 py-2 space-y-2 border-b border-gray-100">
           {parentCategory && (
             <Link
-              href={`/${parentCategory.slug}`}
+              href={`/${categoryPathObjects.slice(0, -1).map(c => c.slug).join('/')}`}
               className="inline-flex items-center gap-1.5 text-xs text-blue-600 font-medium hover:text-blue-800 transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
@@ -312,9 +344,9 @@ export default function CategoryView() {
           )}
           {subCategories.length > 0 && (
             <SubCategoryLinks
-              currentSlug={parentSlug || categoryInfo.slug}
+              basePath={linksBasePath}
               subCategories={subCategories}
-              activeSlug={currentSlug}
+              activeSlug={activeLinkSlug}
             />
           )}
           <select
@@ -336,10 +368,19 @@ export default function CategoryView() {
           {/* Left Sidebar: Sub-categories (desktop only) */}
           <aside className="hidden lg:block lg:w-60">
             <div className="sticky top-24">
+              {parentCategory && (
+                 <Link
+                   href={`/${categoryPathObjects.slice(0, -1).map(c => c.slug).join('/')}`}
+                   className="inline-flex items-center gap-1.5 text-xs text-blue-600 font-medium hover:text-blue-800 transition-colors mb-4"
+                 >
+                   <ArrowLeft className="w-3.5 h-3.5" />
+                   Tillbaka till {parentCategory.name}
+                 </Link>
+              )}
               <SubCategoryLinks
-                currentSlug={parentSlug || categoryInfo.slug}
+                basePath={linksBasePath}
                 subCategories={subCategories}
-                activeSlug={currentSlug}
+                activeSlug={activeLinkSlug}
               />
             </div>
           </aside>
@@ -365,6 +406,9 @@ export default function CategoryView() {
                       ? Math.min(...p.prices.map((x: any) => x.price))
                       : 0;
                   
+                  // Fix for breadcrumbs if needed: createProductUrl uses category.slug
+                  // We might want to pass the full slug path to the product in the future,
+                  // but for now createProductUrl just needs the leaf category slug.
                   const productUrl = createProductUrl(
                     p.id,
                     p.slug,

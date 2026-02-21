@@ -10,8 +10,13 @@ def generate_fake_data(db: Session, amount: int = 50):
     """Genererar testprodukter med märken, butiker och kampanjpriser."""
     logger.info(f"🧪 Genererar {amount} avancerade fake-produkter...")
 
-    # 1. Hämta löv-kategorier (de längst ner i trädet)
-    categories = db.query(Category).filter(Category.parent_id != None).all()
+    # 1. Hämta löv-kategorier (de längst ner i trädet, d.v.s de som saknar egna barn)
+    all_categories = db.query(Category.id, Category.parent_id, Category.name).all()
+    parent_ids = {c.parent_id for c in all_categories if c.parent_id is not None}
+    leaf_category_ids = [c.id for c in all_categories if c.id not in parent_ids]
+    
+    categories = db.query(Category).filter(Category.id.in_(leaf_category_ids)).all()
+    
     if not categories:
         logger.error("❌ Inga underkategorier hittades. Kör 'python manage.py seed' först.")
         return

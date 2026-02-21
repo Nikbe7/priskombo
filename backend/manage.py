@@ -6,7 +6,7 @@ import re
 from dotenv import load_dotenv
 
 # 1. NYTT: Importera loggning
-from app.logging_config import setup_logging, get_logger
+from app.core.logging import setup_logging, get_logger
 
 # Ladda miljövariabler
 load_dotenv()
@@ -16,7 +16,8 @@ setup_logging()
 logger = get_logger("manage")
 
 try:
-    from app.database import SessionLocal, engine, Base
+    from app.db.session import SessionLocal, engine
+    from app.db.base import Base
     from app.services.seeder import seed_categories, update_coming_soon_status
     from app.services.importer import import_csv_feed
     from app.services.dev_tools import generate_fake_data
